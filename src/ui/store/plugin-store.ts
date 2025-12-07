@@ -38,12 +38,25 @@ interface UIActions {
 	clearError: () => void;
 }
 
+interface SearchState {
+	searchedVariableName: string | null;
+	recentSearches: string[];
+}
+
+interface SearchActions {
+	searchByName: (variableName: string) => Promise<boolean>;
+	addRecentSearch: (variableName: string) => void;
+	clearSearch: () => void;
+}
+
 type PluginStore = VariablesState &
 	UsagesState &
 	UIState &
 	VariablesActions &
 	UsagesActions &
-	UIActions;
+	UIActions &
+	SearchState &
+	SearchActions;
 
 export const usePluginStore = create<PluginStore>()(
 	devtools(
@@ -58,6 +71,8 @@ export const usePluginStore = create<PluginStore>()(
 			isLoadingVariables: false,
 			isLoadingUsages: false,
 			error: null,
+			searchedVariableName: null,
+			recentSearches: [],
 
 			fetchVariables: async () => {
 				set({ isLoadingVariables: true, error: null });
