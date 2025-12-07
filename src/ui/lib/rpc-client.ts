@@ -5,6 +5,7 @@ import {
 	type RpcRequestMessage,
 	type RpcResponse,
 } from '../../shared/rpc-types';
+import { nanoid } from 'nanoid';
 
 interface PendingRequest<T = unknown> {
 	resolve: (value: T) => void;
@@ -74,7 +75,8 @@ class RpcClient {
 			return Promise.reject(new Error('RPC client not initialized. Call rpc.init() first.'));
 		}
 
-		const id = crypto.randomUUID();
+		// const id = window.crypto.getRandomValues(new Uint32Array(1))[0].toString(16);
+		const id = nanoid();
 		const timeout = options?.timeout ?? this.config.defaultTimeout;
 		const startTime = Date.now();
 
