@@ -22,7 +22,7 @@ interface UseRpcQueryResult<T> extends RpcQueryState<T> {
 
 export function useRpcQuery<T extends RpcProcedure>(
 	procedure: T,
-	payload: RpcRequest<T>,
+	payload?: RpcRequest<T>,
 	options: UseRpcQueryOptions = {},
 ): UseRpcQueryResult<RpcResponse<T>> {
 	const { enabled = true, timeout, onSuccess, onError } = options;
