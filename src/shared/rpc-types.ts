@@ -9,8 +9,8 @@ export interface Variable {
 	id: string;
 	name: string;
 	resolvedType: 'BOOLEAN' | 'FLOAT' | 'STRING' | 'COLOR';
-	collectionId: string;
-	collectionName: string;
+	collectionId?: string;
+	collectionName?: string;
 }
 
 export interface VariableUsage {
@@ -24,7 +24,7 @@ export interface VariableUsage {
 
 export interface RpcSchema {
 	'get-variables': {
-		request: { collectionId?: string };
+		request: void;
 		response: { variables: Variable[] };
 	};
 

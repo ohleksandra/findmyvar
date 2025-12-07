@@ -119,7 +119,10 @@ class RpcServer {
 
 	private log(message: string): void {
 		if (this.config.debug) {
-			console.log(`[RPC Server] ${message}`);
+			console.log(
+				`%c[RPC Server] ${message}`,
+				'color: #fff; background: #7c3aed; padding: 2px 6px; border-radius: 3px; font-weight: bold;',
+			);
 		}
 	}
 

@@ -68,7 +68,7 @@ class RpcClient {
 
 	call<T extends RpcProcedure>(
 		procedure: T,
-		payload: RpcRequest<T>,
+		payload?: RpcRequest<T>,
 		options?: { timeout?: number },
 	): Promise<RpcResponse<T>> {
 		if (!this.initialized) {
@@ -145,7 +145,11 @@ class RpcClient {
 
 	private log(message: string, data?: unknown): void {
 		if (this.config.debug) {
-			console.log(`[RPC] ${message}`, data ?? '');
+			console.log(
+				'%c[RPC Client] ' + message,
+				'color: #fff; background: #2563eb; padding: 2px 6px; border-radius: 3px; font-weight: bold;',
+				data ?? '',
+			);
 		}
 	}
 
@@ -158,11 +162,11 @@ class RpcClient {
 	}
 }
 
-export const rpcClient = new RpcClient({ debug: false });
+export const rpcClient = new RpcClient({ debug: true });
 
 export function callPlugin<T extends RpcProcedure>(
 	procedure: T,
-	payload: RpcRequest<T>,
+	payload?: RpcRequest<T>,
 	options?: { timeout?: number },
 ): Promise<RpcResponse<T>> {
 	return rpcClient.call(procedure, payload, options);

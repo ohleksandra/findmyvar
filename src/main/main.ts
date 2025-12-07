@@ -1,3 +1,4 @@
+import { getVariablesHandler } from './handlers/get-variables';
 import { rpcServer } from './lib/rpc-server';
 
 export default function () {
@@ -7,6 +8,8 @@ export default function () {
 	figma.showUI(__html__, { width: pluginwidth, height: 600, themeColors: true });
 
 	figma.ui.onmessage = async (message) => {
+		rpcServer.handle('get-variables', getVariablesHandler);
+
 		const wasRpc = await rpcServer.processMessage(message);
 
 		if (wasRpc) {
