@@ -1,3 +1,5 @@
+import { registerVariableSearchHandlers } from './handlers/variable-search-handler';
+// import { findVariableUsageHandler } from './handlers/find-variable-usage';
 import { getVariablesHandler } from './handlers/get-variables';
 import { rpcServer } from './lib/rpc-server';
 
@@ -8,7 +10,9 @@ export default function () {
 	figma.showUI(__html__, { width: pluginwidth, height: 600, themeColors: true });
 
 	figma.ui.onmessage = async (message) => {
-		rpcServer.handle('get-variables', getVariablesHandler);
+		rpcServer.registerHandler('get-variables', getVariablesHandler);
+
+		registerVariableSearchHandlers();
 
 		const wasRpc = await rpcServer.processMessage(message);
 
