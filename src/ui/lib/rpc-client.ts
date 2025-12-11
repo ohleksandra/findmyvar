@@ -1,9 +1,13 @@
 import {
+	isRpcNotification,
 	isRpcResponse,
+	type RpcNotification,
+	type RpcNotificationPayload,
 	type RpcProcedure,
 	type RpcRequest,
 	type RpcRequestMessage,
 	type RpcResponse,
+	type RpcResponseMessage,
 } from '../../shared/rpc-types';
 import { nanoid } from 'nanoid';
 
@@ -14,6 +18,12 @@ interface PendingRequest<T = unknown> {
 	procedure: RpcProcedure;
 	startTime: number;
 }
+
+type NotificationHandler<T extends RpcNotification> = (payload: RpcNotificationPayload<T>) => void;
+
+type NotificationHandlerRegistry = Partial<{
+	[K in RpcNotification]: Set<NotificationHandler<K>>;
+}>;
 
 interface RpcClientConfig {
 	defaultTimeout: number;
@@ -27,6 +37,7 @@ const DEFAULT_CONFIG: RpcClientConfig = {
 
 class RpcClient {
 	private pending = new Map<string, PendingRequest>();
+	private notificationHandlers: NotificationHandlerRegistry = {};
 	private initialized = false;
 	private handleMessage = this.onMessage.bind(this);
 	private config: RpcClientConfig;
@@ -53,7 +64,7 @@ class RpcClient {
 
 		const pendingCount = this.pending.size;
 
-		for (const [id, request] of this.pending) {
+		for (const [, request] of this.pending) {
 			clearTimeout(request.timeoutId);
 			request.reject(
 				new Error(`RPC client destroyed while "${request.procedure}" was pending`),
@@ -114,13 +125,54 @@ class RpcClient {
 		});
 	}
 
+	on<T extends RpcNotification>(notification: T, handler: NotificationHandler<T>): () => void {
+		if (!this.notificationHandlers[notification]) {
+			this.notificationHandlers[notification] = new Set();
+		}
+
+		const handlers = this.notificationHandlers[notification] as Set<NotificationHandler<T>>;
+		handlers.add(handler);
+
+		this.log(`Subscribed to "${notification}"`);
+
+		// Return unsubscribe function
+		return () => {
+			handlers.delete(handler);
+			this.log(`Unsubscribed from "${notification}"`);
+		};
+	}
+
+	once<T extends RpcNotification>(
+		notification: T,
+		handler: (payload: RpcNotificationPayload<T>) => boolean,
+	): () => void {
+		const unsubscribe = this.on(notification, (payload) => {
+			const shouldUnsubscribe = handler(payload);
+			if (shouldUnsubscribe) {
+				unsubscribe();
+			}
+		});
+
+		return unsubscribe;
+	}
+
 	private onMessage(event: MessageEvent): void {
 		const msg = event.data?.pluginMessage;
 
-		if (!msg || !isRpcResponse(msg)) {
+		if (!msg) return;
+
+		if (isRpcResponse(msg)) {
+			this.handleResponse(msg);
 			return;
 		}
 
+		if (isRpcNotification(msg)) {
+			this.handleNotification(msg.notification, msg.payload);
+			return;
+		}
+	}
+
+	private handleResponse(msg: RpcResponseMessage): void {
 		const { id, procedure, response, error } = msg;
 		const pending = this.pending.get(id);
 
@@ -141,6 +193,26 @@ class RpcClient {
 			this.log(`"${procedure}" succeeded after ${duration}ms:`, response);
 			pending.resolve(response);
 		}
+	}
+
+	private handleNotification(notification: RpcNotification, payload: unknown): void {
+		this.log(`Received notification "${notification}"`);
+
+		const handlers = this.notificationHandlers[notification];
+		if (!handlers || handlers.size === 0) {
+			this.log(`No handlers for "${notification}"`);
+			return;
+		}
+
+		handlers.forEach((handler) => {
+			try {
+				(handler as NotificationHandler<typeof notification>)(
+					payload as RpcNotificationPayload<typeof notification>,
+				);
+			} catch (error) {
+				console.error(`[RPC Client] Handler error for "${notification}":`, error);
+			}
+		});
 	}
 
 	private log(message: string, data?: unknown): void {

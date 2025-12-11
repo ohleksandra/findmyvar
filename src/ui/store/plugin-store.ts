@@ -1,90 +1,149 @@
 import type { Variable, VariableUsage } from '../../shared/rpc-types';
-import { devtools } from 'zustand/middleware';
 import { create } from 'zustand';
-import { callPlugin } from '@/lib/rpc-client';
+import { callPlugin, rpcClient } from '@/lib/rpc-client';
+import type { SearchProgress } from '../../shared/rpc-types';
 
-interface VariablesState {
-	collections: { id: string; name: string }[];
+interface PluginStore {
 	variables: Variable[];
-	selectedCollectionId: string | null;
-	selectedVariableId: string | null;
-}
-
-interface UsagesState {
-	usages: VariableUsage[];
-	searchedVariableId: string | null;
-}
-
-interface UIState {
-	isLoadingCollections: boolean;
-	isLoadingVariables: boolean;
-	isLoadingUsages: boolean;
+	recentSearches: string[];
 	error: string | null;
+	progress: SearchProgress | null;
+	isSearching: boolean;
+	searchVariableId: string | null;
+	cached: boolean;
+	searchResults: VariableUsage[];
+
+	fetchVariables(): Promise<void>;
+	clearRecentSearches(): void;
+	startSearch(variableId: string): Promise<void>;
+	cancelSearch(): Promise<void>;
+	clearSearchResults(): void;
+	clearCache(variableId?: string): Promise<void>;
+	navigateToResult(usage: VariableUsage): Promise<void>;
+
+	// Helpers for internal use
+	_appendResults(results: VariableUsage[], isComplete: boolean): void;
+	_setProgress(progress: SearchProgress): void;
+	_setError(error: string): void;
 }
 
-interface VariablesActions {
-	fetchCollections: () => Promise<void>;
-	fetchVariables: (collectionId?: string) => Promise<void>;
-	selectCollection: (collectionId: string | null) => void;
-	selectVariable: (variableId: string | null) => void;
-}
+export const usePluginStore = create<PluginStore>()((set, get) => ({
+	variables: [],
+	recentSearches: [],
+	error: null,
+	progress: null,
+	isSearching: false,
+	searchVariableId: null,
+	cached: false,
+	searchResults: [],
 
-interface UsagesActions {
-	findUsages: (variableId: string) => Promise<void>;
-	clearUsages: () => void;
-}
+	async fetchVariables() {
+		try {
+			const { variables } = await callPlugin('get-variables');
 
-interface UIActions {
-	clearError: () => void;
-}
+			set({ variables });
+		} catch (err) {
+			set({
+				error: err instanceof Error ? err.message : 'Failed to fetch variables',
+			});
+		}
+	},
 
-type PluginStore = VariablesState &
-	UsagesState &
-	UIState &
-	VariablesActions &
-	UsagesActions &
-	UIActions;
+	clearRecentSearches: () => {
+		set({ recentSearches: [] });
+	},
 
-export const usePluginStore = create<PluginStore>()(
-	devtools(
-		(set, get) => ({
-			variables: [],
-			collections: [],
-			selectedCollectionId: null,
-			selectedVariableId: null,
-			usages: [],
-			searchedVariableId: null,
-			isLoadingCollections: false,
-			isLoadingVariables: false,
-			isLoadingUsages: false,
+	startSearch: async (variableId: string) => {
+		set({
+			isSearching: true,
+			searchVariableId: variableId,
 			error: null,
+			progress: null,
+			cached: false,
+		});
 
-			fetchVariables: async () => {
-				set({ isLoadingVariables: true, error: null });
+		try {
+			await callPlugin('variableSearch.start', { variableId });
+		} catch (err) {
+			set({
+				isSearching: false,
+				error: err instanceof Error ? err.message : 'Search failed',
+			});
+		}
+	},
 
-				try {
-					const { variables } = await callPlugin('get-variables');
+	cancelSearch: async () => {
+		try {
+			await callPlugin('variableSearch.cancel', undefined as void);
+		} finally {
+			set({ isSearching: false });
+		}
+	},
 
-					set({
-						variables,
-						isLoadingVariables: false,
-					});
-				} catch (err) {
-					set({
-						isLoadingVariables: false,
-						error: err instanceof Error ? err.message : 'Failed to fetch variables',
-					});
-				}
-			},
+	clearSearchResults: () => {
+		set({
+			searchResults: [],
+			error: null,
+			progress: null,
+			searchVariableId: null,
+		});
+	},
 
-			selectVariable: (variableId) => {
-				set({ selectedVariableId: variableId });
-			},
+	clearCache: async (variableId?: string) => {
+		await callPlugin('variableSearch.clearCache', { variableId });
+	},
 
-			clearError: () => {
-				set({ error: null });
-			},
-		}),
-		{ name: 'PluginStore' },
-	),
-);
+	navigateToResult: async (usage: VariableUsage) => {
+		await callPlugin('variableSearch.navigateTo', {
+			nodeId: usage.nodeId,
+			pageId: usage.pageId,
+		});
+	},
+
+	_appendResults: (results: VariableUsage[], isComplete: boolean) => {
+		const state = get();
+
+		if (results.length > 0) {
+			set({ searchResults: [...state.searchResults, ...results] });
+		}
+
+		if (isComplete) {
+			const cached = state.progress?.currentPage === 'Cached';
+			set({
+				isSearching: false,
+				cached,
+				recentSearches: [...state.recentSearches, state.searchVariableId!],
+			});
+		}
+	},
+
+	_setProgress: (progress: SearchProgress) => {
+		set({ progress });
+	},
+
+	_setError: (error: string) => {
+		set({ isSearching: false, error });
+	},
+}));
+
+export function initSearchListeners(): () => void {
+	const state = usePluginStore.getState();
+
+	const unsubResults = rpcClient.on('variableSearch.results', (payload) => {
+		state._appendResults(payload.results, payload.isComplete);
+	});
+
+	const unsubProgress = rpcClient.on('variableSearch.progress', (payload) => {
+		state._setProgress(payload);
+	});
+
+	const unsubError = rpcClient.on('variableSearch.error', (payload) => {
+		state._setError(payload.error);
+	});
+
+	return () => {
+		unsubResults();
+		unsubProgress();
+		unsubError();
+	};
+}

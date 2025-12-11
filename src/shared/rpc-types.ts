@@ -1,10 +1,3 @@
-// const RPC_MARKER = '__rpc' as const;
-
-// interface RpcMessageBase {
-// 	[RPC_MARKER]: true;
-// 	id: string;
-// }
-
 export interface Variable {
 	id: string;
 	name: string;
@@ -22,7 +15,13 @@ export interface VariableUsage {
 	pageId: string;
 }
 
-export interface RpcSchema {
+export interface SearchProgress {
+	processed: number;
+	total: number;
+	currentPage: string;
+}
+
+export interface RpcProcedureSchema {
 	'get-variables': {
 		request: void;
 		response: { variables: Variable[] };
@@ -37,18 +36,46 @@ export interface RpcSchema {
 		request: { nodeId: string; pageId: string };
 		response: { success: boolean };
 	};
-
 	'get-collections': {
 		request: void;
 		response: { collections: { id: string; name: string }[] };
 	};
+	'variableSearch.start': {
+		request: { variableId: string };
+		response: { started: boolean };
+	};
+	'variableSearch.cancel': {
+		request: void;
+		response: { cancelled: boolean };
+	};
+	'variableSearch.clearCache': {
+		request: { variableId?: string } | void;
+		response: { cleared: boolean };
+	};
+	'variableSearch.navigateTo': {
+		request: { nodeId: string; pageId: string };
+		response: { success: boolean; error?: string };
+	};
 }
 
-export type RpcProcedure = keyof RpcSchema;
+export interface RpcNotificationSchema {
+	'variableSearch.results': {
+		results: VariableUsage[];
+		isComplete: boolean;
+	};
+	'variableSearch.progress': SearchProgress;
+	'variableSearch.error': { error: string };
+}
 
-export type RpcRequest<T extends RpcProcedure> = RpcSchema[T]['request'];
+export type RpcProcedure = keyof RpcProcedureSchema;
 
-export type RpcResponse<T extends RpcProcedure> = RpcSchema[T]['response'];
+export type RpcNotification = keyof RpcNotificationSchema;
+
+export type RpcRequest<T extends RpcProcedure> = RpcProcedureSchema[T]['request'];
+
+export type RpcResponse<T extends RpcProcedure> = RpcProcedureSchema[T]['response'];
+
+export type RpcNotificationPayload<T extends RpcNotification> = RpcNotificationSchema[T];
 
 export interface RpcRequestMessage<T extends RpcProcedure = RpcProcedure> {
 	__rpc: true;
@@ -63,6 +90,12 @@ export interface RpcResponseMessage<T extends RpcProcedure = RpcProcedure> {
 	procedure: T;
 	response?: RpcResponse<T>;
 	error?: string;
+}
+
+export interface RpcNotificationMessage<T extends RpcNotification = RpcNotification> {
+	__rpcNotification: true;
+	notification: T;
+	payload: RpcNotificationPayload<T>;
 }
 
 export function isRpcRequest(msg: unknown): msg is RpcRequestMessage {
@@ -83,5 +116,14 @@ export function isRpcResponse(msg: unknown): msg is RpcResponseMessage {
 		'__rpc' in msg &&
 		(msg as Record<string, unknown>).__rpc === true &&
 		('response' in msg || 'error' in msg)
+	);
+}
+
+export function isRpcNotification(msg: unknown): msg is RpcNotificationMessage {
+	return (
+		typeof msg === 'object' &&
+		msg !== null &&
+		'__rpcNotification' in msg &&
+		(msg as Record<string, unknown>).__rpcNotification === true
 	);
 }

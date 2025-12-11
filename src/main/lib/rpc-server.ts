@@ -1,5 +1,8 @@
 import {
 	isRpcRequest,
+	RpcNotification,
+	RpcNotificationMessage,
+	RpcNotificationPayload,
 	RpcProcedure,
 	RpcRequest,
 	RpcResponse,
@@ -34,7 +37,7 @@ class RpcServer {
 		this.config = { ...DEFAULT_CONFIG, ...config };
 	}
 
-	handle<T extends RpcProcedure>(procedure: T, handler: RpcHandler<T>): this {
+	registerHandler<T extends RpcProcedure>(procedure: T, handler: RpcHandler<T>): this {
 		if (this.handlers[procedure]) {
 			console.warn(`[RPC Server] Overwriting existing handler for "${procedure}"`);
 		}
@@ -91,6 +94,25 @@ class RpcServer {
 		return true;
 	}
 
+	notify<T extends RpcNotification>(notification: T, payload: RpcNotificationPayload<T>): void {
+		const message: RpcNotificationMessage<T> = {
+			__rpcNotification: true,
+			notification,
+			payload,
+		};
+
+		figma.ui.postMessage(message);
+		this.log(`Sent notification "${notification}"`);
+	}
+
+	hasHandler(procedure: RpcProcedure): boolean {
+		return procedure in this.handlers;
+	}
+
+	getRegisteredProcedures(): RpcProcedure[] {
+		return Object.keys(this.handlers) as RpcProcedure[];
+	}
+
 	private sendResponse<T extends RpcProcedure>(
 		id: string,
 		procedure: T,
@@ -124,14 +146,6 @@ class RpcServer {
 				'color: #fff; background: #7c3aed; padding: 2px 6px; border-radius: 3px; font-weight: bold;',
 			);
 		}
-	}
-
-	hasHandler(procedure: RpcProcedure): boolean {
-		return procedure in this.handlers;
-	}
-
-	getRegisteredProcedures(): RpcProcedure[] {
-		return Object.keys(this.handlers) as RpcProcedure[];
 	}
 }
 
