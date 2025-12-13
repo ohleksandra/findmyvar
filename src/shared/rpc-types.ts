@@ -21,6 +21,8 @@ export interface SearchProgress {
 	currentPage: string;
 }
 
+export type SearchScope = 'all-pages' | 'current-page' | 'selection';
+
 export interface RpcProcedureSchema {
 	'get-variables': {
 		request: void;
@@ -41,7 +43,7 @@ export interface RpcProcedureSchema {
 		response: { collections: { id: string; name: string }[] };
 	};
 	'variableSearch.start': {
-		request: { variableId: string };
+		request: { variableId: string; scope: SearchScope };
 		response: { started: boolean };
 	};
 	'variableSearch.cancel': {

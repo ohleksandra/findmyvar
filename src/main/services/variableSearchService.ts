@@ -1,4 +1,4 @@
-import { VariableUsage } from '../../shared/rpc-types';
+import { SearchScope, VariableUsage } from '../../shared/rpc-types';
 import { rpcServer } from '../lib/rpc-server';
 
 interface CacheEntry {
@@ -6,6 +6,8 @@ interface CacheEntry {
 	timestamp: number;
 	results: VariableUsage[];
 	documentChangeCount: number;
+	selectionKey?: string;
+	scope: SearchScope;
 }
 
 const YIELD_INTERVAL = 16;
@@ -43,11 +45,13 @@ class VariableSearchService {
 		}
 	}
 
-	async search(variableId: string): Promise<void> {
+	async search(variableId: string, scope: SearchScope): Promise<void> {
 		const searchId = `${variableId}-${Date.now()}`;
 		this.activeSearchId = searchId;
 
-		const cached = this.cache.get(variableId);
+		const cacheKey = this.getCacheKey(variableId, scope);
+		const cached = this.cache.get(cacheKey);
+
 		if (cached && this.isCacheValid(cached)) {
 			console.log(`[VariableSearch] Cache hit: ${cached.results.length} results`);
 
@@ -60,31 +64,45 @@ class VariableSearchService {
 			return;
 		}
 
+		if (scope === 'selection' && figma.currentPage.selection.length === 0) {
+			rpcServer.notify('variableSearch.results', {
+				results: [],
+				isComplete: true,
+			});
+
+			rpcServer.notify('variableSearch.progress', {
+				processed: 0,
+				total: 0,
+				currentPage: 'No selection',
+				// scope,
+			});
+
+			this.activeSearchId = null;
+			return;
+		}
+
 		try {
 			figma.skipInvisibleInstanceChildren = true;
 
 			const allResults: VariableUsage[] = [];
+
 			await figma.loadAllPagesAsync();
-			const pages = figma.root.children;
+			// Get targets based on scope
+			const targets = await this.getSearchTargets(scope);
 
-			const pageData: Array<{ page: PageNode; nodes: readonly SceneNode[] }> = [];
 			let totalNodes = 0;
-
-			for (const page of pages) {
-				if (this.activeSearchId !== searchId) return;
-
-				const nodes = page.findAll();
-				totalNodes += nodes.length;
-				pageData.push({ page, nodes });
+			for (const target of targets) {
+				totalNodes += target.nodes.length;
 			}
 
-			console.log(`[VariableSearch] Total nodes: ${totalNodes}`);
+			console.log(`[VariableSearch] Scope: ${scope}, Total nodes: ${totalNodes}`);
 
+			// Process nodes
 			let processedNodes = 0;
 			let lastYieldTime = Date.now();
 			let pendingResults: VariableUsage[] = [];
 
-			for (const { page, nodes } of pageData) {
+			for (const { page, nodes } of targets) {
 				if (this.activeSearchId !== searchId) return;
 
 				const pageId = page.id;
@@ -111,9 +129,9 @@ class VariableSearchService {
 
 					processedNodes++;
 
+					// Time-based yield
 					const now = Date.now();
 					if (now - lastYieldTime >= YIELD_INTERVAL) {
-						// Send pending results
 						if (pendingResults.length > 0) {
 							rpcServer.notify('variableSearch.results', {
 								results: pendingResults,
@@ -126,6 +144,7 @@ class VariableSearchService {
 							processed: processedNodes,
 							total: totalNodes,
 							currentPage: pageName,
+							// scope,
 						});
 
 						await this.yieldToMain();
@@ -139,6 +158,7 @@ class VariableSearchService {
 				}
 			}
 
+			// Send remaining results
 			if (pendingResults.length > 0) {
 				rpcServer.notify('variableSearch.results', {
 					results: pendingResults,
@@ -156,13 +176,17 @@ class VariableSearchService {
 				processed: totalNodes,
 				total: totalNodes,
 				currentPage: 'Complete',
+				// scope,
 			});
 
-			this.cache.set(variableId, {
+			// Cache results
+			this.cache.set(cacheKey, {
 				variableId,
+				scope,
 				results: allResults,
 				timestamp: Date.now(),
 				documentChangeCount: this.documentChangeCount,
+				selectionKey: scope === 'selection' ? this.getSelectionKey() : undefined,
 			});
 
 			console.log(`[VariableSearch] Done. Found ${allResults.length} usages`);
@@ -196,7 +220,20 @@ class VariableSearchService {
 	private isCacheValid(entry: CacheEntry): boolean {
 		const isExpired = Date.now() - entry.timestamp > CACHE_TTL;
 		const isStale = entry.documentChangeCount !== this.documentChangeCount;
-		return !isExpired && !isStale;
+
+		if (isExpired || isStale) return false;
+
+		if (entry.scope === 'selection') {
+			return entry.selectionKey === this.getSelectionKey();
+		}
+
+		if (entry.scope === 'current-page') {
+			const currentCacheKey = this.getCacheKey(entry.variableId, entry.scope);
+			const entryCacheKey = `${entry.variableId}:${entry.scope}:${figma.currentPage.id}`;
+			return currentCacheKey === entryCacheKey;
+		}
+
+		return true;
 	}
 
 	private yieldToMain(): Promise<void> {
@@ -235,6 +272,81 @@ class VariableSearchService {
 		}
 
 		return fields;
+	}
+
+	private getSelectionKey(): string {
+		const selection = figma.currentPage.selection;
+		if (selection.length === 0) return 'empty';
+		return selection
+			.map((node) => node.id)
+			.sort()
+			.join(',');
+	}
+
+	private getCacheKey(variableId: string, scope: SearchScope): string {
+		if (scope === 'selection') {
+			const selectionKey = this.getSelectionKey();
+			return `${variableId}:${scope}:${selectionKey}`;
+		}
+
+		if (scope === 'current-page') {
+			return `${variableId}:${scope}:${figma.currentPage.id}`;
+		}
+
+		return `${variableId}:${scope}`;
+	}
+
+	private async getSearchTargets(scope: SearchScope): Promise<
+		Array<{
+			page: PageNode;
+			nodes: SceneNode[];
+		}>
+	> {
+		await figma.loadAllPagesAsync();
+		switch (scope) {
+			case 'all-pages':
+				return figma.root.children.map((page) => ({
+					page,
+					nodes: page.findAll() as SceneNode[],
+				}));
+
+			case 'current-page':
+				return [
+					{
+						page: figma.currentPage,
+						nodes: figma.currentPage.findAll() as SceneNode[],
+					},
+				];
+			case 'selection': {
+				const selection = figma.currentPage.selection;
+				if (selection.length === 0) {
+					return [];
+				}
+				const nodes: SceneNode[] = [];
+
+				const collectNodes = (node: SceneNode) => {
+					nodes.push(node);
+					if ('children' in node) {
+						for (const child of node.children) {
+							collectNodes(child as SceneNode);
+						}
+					}
+				};
+
+				for (const node of selection) {
+					collectNodes(node);
+				}
+
+				return [
+					{
+						page: figma.currentPage,
+						nodes,
+					},
+				];
+			}
+			default:
+				return [];
+		}
 	}
 }
 

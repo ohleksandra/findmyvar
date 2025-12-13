@@ -2,6 +2,7 @@ import SearchControl from './search-control';
 import { usePluginStore } from '@/store/plugin-store';
 import { useShallow } from 'zustand/react/shallow';
 import RecentSearchList from './recent-search-list';
+import ScopeSelector from './scope-selector';
 
 const Header = () => {
 	const { recentSearches } = usePluginStore(
@@ -15,6 +16,7 @@ const Header = () => {
 			<div className="flex flex-col gap-y-2">
 				<SearchControl />
 				{recentSearches.size > 0 && <RecentSearchList />}
+				<ScopeSelector />
 			</div>
 		</div>
 	);

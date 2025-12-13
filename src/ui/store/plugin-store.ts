@@ -1,4 +1,4 @@
-import type { Variable, VariableUsage } from '../../shared/rpc-types';
+import type { SearchScope, Variable, VariableUsage } from '../../shared/rpc-types';
 import { create } from 'zustand';
 import { callPlugin, rpcClient } from '@/lib/rpc-client';
 import type { SearchProgress } from '../../shared/rpc-types';
@@ -14,6 +14,7 @@ interface PluginStore {
 	searchResults: VariableUsage[];
 	searchQuery: string;
 	isSearchCompleted: boolean;
+	scope: SearchScope;
 
 	fetchVariables(): Promise<void>;
 	clearRecentSearches(): void;
@@ -23,6 +24,7 @@ interface PluginStore {
 	clearCache(variableId?: string): Promise<void>;
 	navigateToResult(usage: VariableUsage): Promise<void>;
 	setSearchQuery(query: string): void;
+	setScope: (scope: SearchScope) => void;
 
 	// Helpers for internal use
 	_appendResults(results: VariableUsage[], isComplete: boolean): void;
@@ -41,6 +43,7 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 	searchResults: [],
 	searchQuery: '',
 	isSearchCompleted: false,
+	scope: 'all-pages',
 
 	async fetchVariables() {
 		try {
@@ -58,10 +61,13 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 		set({ recentSearches: new Map<string, Variable>() });
 	},
 
-	startSearch: async (variable: Variable) => {
+	startSearch: async (variable: Variable, scope: SearchScope) => {
+		const currentScope = scope ?? get().scope;
+
 		set({
 			isSearching: true,
 			searchVariable: variable,
+			scope: currentScope,
 			error: null,
 			progress: null,
 			cached: false,
@@ -70,7 +76,10 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 		get().clearSearchResults();
 
 		try {
-			await callPlugin('variableSearch.start', { variableId: variable.id });
+			await callPlugin('variableSearch.start', {
+				variableId: variable.id,
+				scope: currentScope,
+			});
 		} catch (err) {
 			set({
 				isSearching: false,
@@ -98,6 +107,10 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 
 	clearCache: async (variableId?: string) => {
 		await callPlugin('variableSearch.clearCache', { variableId });
+	},
+
+	setScope: (scope: SearchScope) => {
+		set({ scope });
 	},
 
 	navigateToResult: async (usage: VariableUsage) => {
