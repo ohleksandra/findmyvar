@@ -15,12 +15,13 @@ import { cn } from '@/lib/utils';
 import { CommandSeparator } from 'cmdk';
 
 const SearchControl = () => {
-	const { variables, setSearchQuery, searchQuery, startSearch } = usePluginStore(
+	const { variables, setSearchQuery, searchQuery, startSearch, scope } = usePluginStore(
 		useShallow((state) => ({
 			variables: state.variables,
 			setSearchQuery: state.setSearchQuery,
 			searchQuery: state.searchQuery,
 			startSearch: state.startSearch,
+			scope: state.scope,
 		})),
 	);
 
@@ -52,6 +53,7 @@ const SearchControl = () => {
 					'bg-white border-none search-input-shadow',
 					isSuggestionsOpen ? 'rounded-b-none border-none' : 'rounded-[12px]',
 				)}
+				shouldFilter={false}
 			>
 				<CommandInput
 					className={cn('h-11')}
@@ -78,7 +80,7 @@ const SearchControl = () => {
 									onSelect={async () => {
 										close();
 										setSearchQuery(variable.name);
-										await startSearch(variable);
+										await startSearch(variable, scope);
 									}}
 								>
 									<InstanceIcon
