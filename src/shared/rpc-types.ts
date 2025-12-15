@@ -4,6 +4,8 @@ export interface Variable {
 	resolvedType: 'BOOLEAN' | 'FLOAT' | 'STRING' | 'COLOR';
 	collectionId?: string;
 	collectionName?: string;
+	hiddenFromPubslishing: boolean;
+	remote?: boolean;
 }
 
 export interface VariableUsage {

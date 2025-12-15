@@ -54,6 +54,7 @@ const SearchControl = () => {
 					isSuggestionsOpen ? 'rounded-b-none border-none' : 'rounded-[12px]',
 				)}
 				shouldFilter={false}
+				loop
 			>
 				<CommandInput
 					className={cn('h-11')}
@@ -82,6 +83,7 @@ const SearchControl = () => {
 										setSearchQuery(variable.name);
 										await startSearch(variable, scope);
 									}}
+									value={`${variable.id}-${variable.name}`}
 								>
 									<InstanceIcon
 										type={variable.resolvedType}
