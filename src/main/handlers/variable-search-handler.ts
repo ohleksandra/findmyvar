@@ -14,7 +14,7 @@ export function registerVariableSearchHandlers(): void {
 	});
 
 	rpcServer.registerHandler('variableSearch.clearCache', (payload) => {
-		variableSearchService.clearCache(payload?.variableId);
+		variableSearchService.clearCache(payload && payload.variableId);
 		return { cleared: true };
 	});
 

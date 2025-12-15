@@ -5,6 +5,7 @@ import { Badge } from './ui/badge';
 import InstanceIcon from './instance-icon';
 import { useMemo } from 'react';
 import SearchResultSummary from './search-result-summary';
+import VariableUsage from './variable-usage';
 
 const SearchResult = () => {
 	const { searchResults, searchVariable } = usePluginStore(
@@ -53,10 +54,7 @@ const SearchResult = () => {
 								</AccordionTrigger>
 								<AccordionContent>
 									{results.map((result, idx) => (
-										<div key={idx} className="border-b px-6">
-											<div>Variable used in Node ID: {result.nodeId}</div>
-											<div>Page ID: {result.pageId}</div>
-										</div>
+										<VariableUsage key={idx} variable={result} />
 									))}
 								</AccordionContent>
 							</AccordionItem>

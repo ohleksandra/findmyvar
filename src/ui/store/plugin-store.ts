@@ -18,7 +18,7 @@ interface PluginStore {
 
 	fetchVariables(): Promise<void>;
 	clearRecentSearches(): void;
-	startSearch(variable: Variable): Promise<void>;
+	startSearch(variable: Variable, scope: SearchScope): Promise<void>;
 	cancelSearch(): Promise<void>;
 	clearSearchResults(): void;
 	clearCache(variableId?: string): Promise<void>;
@@ -110,7 +110,13 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 	},
 
 	setScope: (scope: SearchScope) => {
+		const state = get();
+
 		set({ scope });
+
+		if (state.searchVariable && !state.isSearching) {
+			get().startSearch(state.searchVariable, scope);
+		}
 	},
 
 	navigateToResult: async (usage: VariableUsage) => {
