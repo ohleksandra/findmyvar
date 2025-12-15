@@ -87,7 +87,7 @@ const SearchControl = () => {
 								>
 									<InstanceIcon
 										type={variable.resolvedType}
-										className="w-4 h-4"
+										className="inline-flex size-5 text-[#17181A]"
 									/>
 									<span>{variable.name}</span>
 								</CommandItem>

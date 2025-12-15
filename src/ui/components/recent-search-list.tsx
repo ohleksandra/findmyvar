@@ -26,7 +26,7 @@ const RecentSearchList = () => {
 								await startSearch(variable);
 							}}
 						>
-							<InstanceIcon type={variable.resolvedType} />
+							<InstanceIcon className="size-4!" type={variable.resolvedType} />
 							<span className="text-xs">{variable.name}</span>
 						</Badge>
 					</li>
