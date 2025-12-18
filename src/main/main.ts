@@ -1,7 +1,7 @@
-import { registerVariableSearchHandlers } from './handlers/variable-search-handler';
 // import { findVariableUsageHandler } from './handlers/find-variable-usage';
 import { getVariablesHandler } from './handlers/get-variables';
-import { rpcServer } from './lib/rpc-server';
+import { registerVariableSearchHandlers } from './handlers/variable-search-handler';
+import { rpcServer } from './rpc/rpc-server';
 
 export default function () {
 	figma.showUI(__html__, { width: 538, height: 800, themeColors: true });

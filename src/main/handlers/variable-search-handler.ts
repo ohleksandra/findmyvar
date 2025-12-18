@@ -1,36 +1,50 @@
-import { rpcServer } from '../lib/rpc-server';
-import { variableSearchService } from '../services/variableSearchService';
+// handlers/variable-search-handlers.ts
+
+import { rpcServer } from '../rpc/rpc-server';
+import { VariableSearchService } from '../services/variable-search-service';
+
+// Create service instance with rpcServer.notify bound
+const searchService = new VariableSearchService(rpcServer.notify.bind(rpcServer));
 
 export function registerVariableSearchHandlers(): void {
-	rpcServer.registerHandler('variableSearch.start', async (payload) => {
-		variableSearchService.search(payload.variableId, payload.scope);
+	rpcServer
+		.registerHandler('variableSearch.start', async ({ variableId, scope }) => {
+			const started = await searchService.startSearch(variableId, scope);
+			return { started };
+		})
+		.registerHandler('variableSearch.cancel', async () => {
+			const cancelled = searchService.cancelSearch();
+			return { cancelled };
+		})
+		.registerHandler('variableSearch.clearCache', async () => {
+			// Placeholder for future caching
+			return { cleared: true };
+		})
+		.registerHandler('variableSearch.navigateTo', async ({ nodeId, pageId }) => {
+			try {
+				const page = await figma.getNodeByIdAsync(pageId);
+				if (!page || page.type !== 'PAGE') {
+					return { success: false, error: 'Page not found' };
+				}
 
-		return { started: true };
-	});
+				if (figma.currentPage.id !== pageId) {
+					await figma.setCurrentPageAsync(page as PageNode);
+				}
 
-	rpcServer.registerHandler('variableSearch.cancel', async () => {
-		variableSearchService.cancelSearch();
-		return { cancelled: true };
-	});
+				const node = await figma.getNodeByIdAsync(nodeId);
+				if (!node || !('type' in node)) {
+					return { success: false, error: 'Node not found' };
+				}
 
-	rpcServer.registerHandler('variableSearch.clearCache', (payload) => {
-		variableSearchService.clearCache(payload && payload.variableId);
-		return { cleared: true };
-	});
+				figma.currentPage.selection = [node as SceneNode];
+				figma.viewport.scrollAndZoomIntoView([node as SceneNode]);
 
-	rpcServer.registerHandler('variableSearch.navigateTo', async (payload) => {
-		const { nodeId, pageId } = payload;
-		const page = (await figma.getNodeByIdAsync(pageId)) as PageNode | null;
-		const node = (await figma.getNodeByIdAsync(nodeId)) as SceneNode | null;
-
-		if (!page || !node) {
-			return { success: false, error: 'Node not found' };
-		}
-
-		await figma.setCurrentPageAsync(page);
-		figma.viewport.scrollAndZoomIntoView([node]);
-		figma.currentPage.selection = [node];
-
-		return { success: true };
-	});
+				return { success: true };
+			} catch (err) {
+				return {
+					success: false,
+					error: err instanceof Error ? err.message : 'Navigation failed',
+				};
+			}
+		});
 }
