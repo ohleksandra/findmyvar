@@ -1,4 +1,5 @@
 import {
+	isRpcNotification,
 	isRpcRequest,
 	RpcNotification,
 	RpcNotificationMessage,

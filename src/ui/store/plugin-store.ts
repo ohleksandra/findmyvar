@@ -16,7 +16,7 @@ interface PluginStore {
 	isSearchCompleted: boolean;
 	scope: SearchScope;
 
-	fetchVariables(): Promise<void>;
+	getAllVariables(): Promise<void>;
 	clearRecentSearches(): void;
 	startSearch(variable: Variable, scope?: SearchScope): Promise<void>;
 	cancelSearch(): Promise<void>;
@@ -24,7 +24,7 @@ interface PluginStore {
 	clearCache(variableId?: string): Promise<void>;
 	navigateToResult(usage: VariableUsage): Promise<void>;
 	setSearchQuery(query: string): void;
-	setScope: (scope: SearchScope) => void;
+	setSearchScope: (scope: SearchScope) => void;
 
 	// Helpers for internal use
 	_appendResults(results: VariableUsage[], isComplete: boolean): void;
@@ -45,7 +45,7 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 	isSearchCompleted: false,
 	scope: 'all-pages',
 
-	async fetchVariables() {
+	async getAllVariables() {
 		try {
 			const { variables } = await callPlugin('get-variables');
 
@@ -101,7 +101,6 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 			searchResults: [],
 			error: null,
 			progress: null,
-			// searchVariable: null,
 		});
 	},
 
@@ -109,7 +108,7 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 		await callPlugin('variableSearch.clearCache', { variableId });
 	},
 
-	setScope: (scope: SearchScope) => {
+	setSearchScope: (scope: SearchScope) => {
 		const state = get();
 
 		set({ scope });
