@@ -196,7 +196,7 @@ class RpcClient {
 	}
 
 	private handleNotification(notification: RpcNotification, payload: unknown): void {
-		this.log(`Received notification "${notification}"`);
+		this.log(`Received notification "${notification}"`, payload);
 
 		const handlers = this.notificationHandlers[notification];
 		if (!handlers || handlers.size === 0) {

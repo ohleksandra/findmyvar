@@ -8,10 +8,11 @@ import SearchResultSummary from './search-result-summary';
 import VariableUsage from './variable-usage';
 
 const SearchResult = () => {
-	const { searchResults, searchVariable } = usePluginStore(
+	const { searchResults, searchVariable, isSearchCompleted } = usePluginStore(
 		useShallow((state) => ({
 			searchResults: state.searchResults,
 			searchVariable: state.searchVariable,
+			isSearchCompleted: state.isSearchCompleted,
 		})),
 	);
 
@@ -27,11 +28,13 @@ const SearchResult = () => {
 			) : (
 				<div className="flex flex-col">
 					<div className="flex px-6 py-3 border-b">
-						<SearchResultSummary
-							variable={searchVariable!}
-							resultCount={searchResults.length}
-							pagesCount={pagesCount}
-						/>
+						{isSearchCompleted && (
+							<SearchResultSummary
+								variable={searchVariable!}
+								resultCount={searchResults.length}
+								pagesCount={pagesCount}
+							/>
+						)}
 					</div>
 					<Accordion type="multiple" className="w-full">
 						{Object.entries(

@@ -86,7 +86,7 @@ class VariableSearchService {
 
 			const allResults: VariableUsage[] = [];
 
-			await figma.loadAllPagesAsync();
+			// await figma.loadAllPagesAsync(); Is it really needed here?
 			// Get targets based on scope
 			const targets = await this.getSearchTargets(scope);
 
@@ -270,7 +270,6 @@ class VariableSearchService {
 				}
 			}
 		}
-
 		return fields;
 	}
 
