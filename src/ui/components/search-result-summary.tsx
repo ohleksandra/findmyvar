@@ -11,12 +11,17 @@ type Props = {
 
 const SearchResultSummary = ({ variable, resultCount, pagesCount }: Props) => {
 	return (
-		<div className="flex gap-x-1">
-			<Badge variant="secondary" className="rounded-sm">
+		<div className="flex gap-x-1 items-center">
+			<Badge
+				variant="secondary"
+				className="rounded-sm max-w-52 flex items-center justify-start"
+			>
 				<InstanceIcon type={variable.resolvedType} className="size-5!" />
-				<span className="font-mono">{variable.name}</span>
+				<span className="font-mono overflow-ellipsis whitespace-nowrap overflow-x-hidden">
+					{variable.name}
+				</span>
 			</Badge>
-			<p className="font-sans">
+			<p className="font-sans text-sm">
 				was found <b>{resultCount}</b> instances accross <b>{pagesCount}</b> pages.
 			</p>
 		</div>
