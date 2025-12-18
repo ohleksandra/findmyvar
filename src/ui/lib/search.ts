@@ -84,7 +84,7 @@ function escapeRegex(string: string): string {
 export function searchVariables(
 	variables: Variable[],
 	query: string,
-	limit: number = 10,
+	limit: number = 7,
 ): ScoredVariable[] {
 	if (!query.trim()) {
 		return [];

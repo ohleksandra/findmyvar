@@ -3,7 +3,7 @@ import { variableSearchService } from '../services/variableSearchService';
 
 export function registerVariableSearchHandlers(): void {
 	rpcServer.registerHandler('variableSearch.start', async (payload) => {
-		variableSearchService.search(payload.variableId);
+		variableSearchService.search(payload.variableId, payload.scope);
 
 		return { started: true };
 	});
@@ -14,7 +14,7 @@ export function registerVariableSearchHandlers(): void {
 	});
 
 	rpcServer.registerHandler('variableSearch.clearCache', (payload) => {
-		variableSearchService.clearCache(payload?.variableId);
+		variableSearchService.clearCache(payload && payload.variableId);
 		return { cleared: true };
 	});
 

@@ -4,6 +4,8 @@ export interface Variable {
 	resolvedType: 'BOOLEAN' | 'FLOAT' | 'STRING' | 'COLOR';
 	collectionId?: string;
 	collectionName?: string;
+	hiddenFromPubslishing: boolean;
+	remote?: boolean;
 }
 
 export interface VariableUsage {
@@ -20,6 +22,8 @@ export interface SearchProgress {
 	total: number;
 	currentPage: string;
 }
+
+export type SearchScope = 'all-pages' | 'current-page' | 'selection';
 
 export interface RpcProcedureSchema {
 	'get-variables': {
@@ -41,7 +45,7 @@ export interface RpcProcedureSchema {
 		response: { collections: { id: string; name: string }[] };
 	};
 	'variableSearch.start': {
-		request: { variableId: string };
+		request: { variableId: string; scope: SearchScope };
 		response: { started: boolean };
 	};
 	'variableSearch.cancel': {
