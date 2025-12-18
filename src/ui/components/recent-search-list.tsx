@@ -16,7 +16,7 @@ const RecentSearchList = () => {
 		<>
 			<p className="text-xs font-medium text-[#656B75] font-sans">Recent searches:</p>
 			<ul className="flex gap-1">
-				{Array.from(recentSearches.values()).map((variable) => (
+				{recentSearches.map((variable) => (
 					<li key={variable.id}>
 						<Badge
 							variant={'secondary'}
