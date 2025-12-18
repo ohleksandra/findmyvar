@@ -2,22 +2,23 @@ import { usePluginStore } from '@/store/plugin-store';
 import { useShallow } from 'zustand/react/shallow';
 import { Spinner } from './ui/spinner';
 import { Button } from './ui/button';
-import { Progress } from './ui/progress';
 import { useMemo } from 'react';
+import { Progress } from './ui/progress';
 
 const ProgressPane = () => {
-	const { searchQuery, progress, cancelSearch } = usePluginStore(
+	const { searchQuery, progress, cancelSearch, isSearching } = usePluginStore(
 		useShallow((state) => ({
 			searchQuery: state.searchQuery,
 			progress: state.progress,
 			cancelSearch: state.cancelSearch,
+			isSearching: state.isSearching,
 		})),
 	);
 
-	const searchProgress = useMemo(
-		() => Math.floor(progress!.total > 0 ? (progress!.processed / progress!.total) * 100 : 0),
-		[progress],
-	);
+	const searchProgress = useMemo(() => {
+		if (!progress) return 0;
+		return Math.floor(progress.total > 0 ? (progress.processed / progress.total) * 100 : 0);
+	}, [progress]);
 
 	return (
 		<div className="flex flex-col px-8 py-4 border-b border-b-[#E5E6E8] gap-y-4">
@@ -45,9 +46,7 @@ const ProgressPane = () => {
 					</Button>
 				</div>
 			</div>
-			<div>
-				<Progress value={searchProgress} />
-			</div>
+			<div>{isSearching && <Progress value={searchProgress} />}</div>
 		</div>
 	);
 };

@@ -1,4 +1,5 @@
 import {
+	isRpcNotification,
 	isRpcRequest,
 	RpcNotification,
 	RpcNotificationMessage,
@@ -102,7 +103,7 @@ class RpcServer {
 		};
 
 		figma.ui.postMessage(message);
-		this.log(`Sent notification "${notification}"`);
+		this.log(`Sent notification "${notification}"`, message);
 	}
 
 	hasHandler(procedure: RpcProcedure): boolean {
@@ -139,11 +140,12 @@ class RpcServer {
 		figma.ui.postMessage(message);
 	}
 
-	private log(message: string): void {
+	private log(message: string, data?: unknown): void {
 		if (this.config.debug) {
 			console.log(
 				`%c[RPC Server] ${message}`,
 				'color: #fff; background: #7c3aed; padding: 2px 6px; border-radius: 3px; font-weight: bold;',
+				data ?? '',
 			);
 		}
 	}

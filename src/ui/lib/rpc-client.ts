@@ -54,7 +54,7 @@ class RpcClient {
 
 		window.addEventListener('message', this.handleMessage);
 		this.initialized = true;
-		this.log('RPC client initialized');
+		this.log('RPC client initialized ✅');
 	}
 
 	destroy(): void {
@@ -190,13 +190,13 @@ class RpcClient {
 			this.log(`"${procedure}" failed after ${duration}ms:`, error);
 			pending.reject(new Error(error));
 		} else {
-			this.log(`"${procedure}" succeeded after ${duration}ms:`, response);
+			this.log(`"${procedure}" succeeded after ${duration}ms`, response);
 			pending.resolve(response);
 		}
 	}
 
 	private handleNotification(notification: RpcNotification, payload: unknown): void {
-		this.log(`Received notification "${notification}"`);
+		this.log(`Received notification "${notification}"`, payload);
 
 		const handlers = this.notificationHandlers[notification];
 		if (!handlers || handlers.size === 0) {

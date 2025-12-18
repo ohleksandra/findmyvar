@@ -9,16 +9,10 @@ import {
 	CommandInput,
 	CommandItem,
 	CommandList,
-	CommandShortcut,
 } from './ui/command';
 import InstanceIcon from './instance-icon';
 import { cn } from '@/lib/utils';
 import { CommandSeparator } from 'cmdk';
-import { InputGroup, InputGroupAddon, InputGroupInput } from './ui/input-group';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Kbd, KbdGroup } from './ui/kbd';
-
 const SearchControl = () => {
 	const { variables, setSearchQuery, searchQuery, startSearch, scope } = usePluginStore(
 		useShallow((state) => ({
@@ -66,7 +60,6 @@ const SearchControl = () => {
 					placeholder="Type in variable name e.g., colors/primary, spacing-md..."
 					value={searchQuery}
 					onValueChange={(value) => {
-						console.log('Search query changed:', value);
 						setSearchQuery(value);
 						if (value.length > 0) {
 							setIsSuggestionsOpen(true);
@@ -77,28 +70,6 @@ const SearchControl = () => {
 					autoFocus
 				/>
 
-				{/* <InputGroup>
-					<InputGroupInput
-						placeholder="Type in variable name e.g., colors/primary, spacing-md..."
-						className={cn(
-							'h-11 text-sm',
-							isSuggestionsOpen ? 'rounded-b-none border-none' : 'rounded-[12px]',
-						)}
-						value={searchQuery}
-						onChange={(e) => {
-							setSearchQuery(e.target.value);
-							if (e.target.value.length > 0) {
-								setIsSuggestionsOpen(true);
-							} else {
-								close();
-							}
-						}}
-					/>
-
-					<InputGroupAddon align="inline-end">
-						<Button size="sm">Find</Button>
-					</InputGroupAddon>
-				</InputGroup> */}
 				{isSuggestionsOpen && (
 					<CommandList className="absolute top-full w-full bg-white rounded-bl-2xl rounded-br-2xl search-suggestions-shadow z-50">
 						<CommandSeparator />

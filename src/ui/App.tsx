@@ -8,13 +8,12 @@ import ProgressPane from './components/progress-pane';
 import { AnimatePresence } from 'motion/react';
 
 const App = () => {
-	const { fetchVariables, isSearching, isSearchCompleted, progress } = usePluginStore(
+	const { fetchVariables, isSearching, isSearchCompleted } = usePluginStore(
 		useShallow((state) => ({
-			fetchVariables: state.fetchVariables,
+			fetchVariables: state.getAllVariables,
 			isSearching: state.isSearching,
 			searchResults: state.searchResults,
 			isSearchCompleted: state.isSearchCompleted,
-			progress: state.progress,
 		})),
 	);
 
@@ -28,9 +27,7 @@ const App = () => {
 	return (
 		<div className="flex flex-col w-full h-screen overflow-hidden">
 			<Header />
-			<AnimatePresence>
-				{progress && isSearching && <ProgressPane key="progress-pane" />}
-			</AnimatePresence>
+			<AnimatePresence>{isSearching && <ProgressPane key="progress-pane" />}</AnimatePresence>
 			{!isSearching && !isSearchCompleted && <Intro />}
 			{(isSearching || isSearchCompleted) && <SearchResult />}
 		</div>

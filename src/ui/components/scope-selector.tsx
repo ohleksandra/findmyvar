@@ -6,7 +6,7 @@ import { useShallow } from 'zustand/react/shallow';
 const ScopeSelector = () => {
 	const { setScope } = usePluginStore(
 		useShallow((state) => ({
-			setScope: state.setScope,
+			setScope: state.setSearchScope,
 		})),
 	);
 
