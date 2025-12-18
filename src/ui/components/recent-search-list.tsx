@@ -13,9 +13,11 @@ const RecentSearchList = () => {
 	);
 
 	return (
-		<>
-			<p className="text-xs font-medium text-[#656B75] font-sans">Recent searches:</p>
-			<ul className="flex gap-1">
+		<div className="flex flex-col gap-y-2">
+			<p className="text-xs not-first:font-medium text-[#656B75] font-sans">
+				Recent searches:
+			</p>
+			<ul className="flex gap-x-1 gap-y-1.5 flex-wrap">
 				{recentSearches.map((variable) => (
 					<li key={variable.id}>
 						<Badge
@@ -32,7 +34,7 @@ const RecentSearchList = () => {
 					</li>
 				))}
 			</ul>
-		</>
+		</div>
 	);
 };
 

@@ -14,7 +14,7 @@ const SearchResultSummary = ({ variable, resultCount, pagesCount }: Props) => {
 		<div className="flex gap-x-1 items-center">
 			<Badge
 				variant="secondary"
-				className="rounded-sm max-w-52 flex items-center justify-start"
+				className="rounded-sm max-w-48 flex items-center justify-start"
 			>
 				<InstanceIcon type={variable.resolvedType} className="size-5!" />
 				<span className="font-mono overflow-ellipsis whitespace-nowrap overflow-x-hidden">
