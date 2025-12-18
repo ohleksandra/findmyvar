@@ -5,7 +5,7 @@ import type { SearchProgress } from '../../shared/rpc-types';
 
 interface PluginStore {
 	variables: Variable[];
-	recentSearches: Map<string, Variable>;
+	recentSearches: Variable[];
 	error: string | null;
 	progress: SearchProgress | null;
 	isSearching: boolean;
@@ -34,7 +34,7 @@ interface PluginStore {
 
 export const usePluginStore = create<PluginStore>()((set, get) => ({
 	variables: [],
-	recentSearches: new Map<string, Variable>(),
+	recentSearches: [],
 	error: null,
 	progress: null,
 	isSearching: false,
@@ -58,7 +58,7 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 	},
 
 	clearRecentSearches: () => {
-		set({ recentSearches: new Map<string, Variable>() });
+		set({ recentSearches: [] });
 	},
 
 	startSearch: async (variable: Variable, scope?: SearchScope) => {
@@ -138,9 +138,12 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 			const searchVariable = state.searchVariable;
 			if (searchVariable) {
 				set((prev) => {
-					const recent = new Map(prev.recentSearches);
-					if (!recent.has(searchVariable.id)) {
-						recent.set(searchVariable.id, searchVariable);
+					const recent = [...prev.recentSearches];
+					if (!recent.find((v) => v.id === searchVariable.id)) {
+						const newLength = recent.unshift(searchVariable);
+						if (newLength > 3) {
+							recent.pop();
+						}
 					}
 					return { recentSearches: recent };
 				});
