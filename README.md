@@ -1,55 +1,110 @@
-# Findmyvar
+# FindMyVar
 
-## Quickstart
+FindMyVar is a Figma plugin that helps designers and developers locate where design variables (colors, typography, numeric values, booleans, and strings) are used across a Figma file. It provides a responsive, incremental search UI and direct navigation to matching nodes.
 
-This plugin was created with [Plugma](https://github.com/gavinmcfarland/plugma) using the [React](https://react.dev/) framework.
+---
 
-### Requirements
+## Overview
 
-- [Node.js](https://nodejs.org/en)
-- [Figma desktop app](https://www.figma.com/downloads/)
+FindMyVar searches a Figma document for variable usages and surfaces results with navigation and progress updates.
 
-### Develop and Import
+## Key features
 
-1. Install dependencies and start the dev server:
+- Search variable usages across All pages, Current page, or Selection
+- Real-time progress updates and incremental results
+- Click results to navigate to matching nodes
+- Caching for faster repeated searches
+- Supports variable types: BOOLEAN, FLOAT, STRING, COLOR
 
-   ```bash
-   npm install
-   npm run dev
-   ```
+## Install / Try in Figma
 
-   Changes are automatically rebuilt to `dist/` on save.
+1. Build or run the development bundle (this generates `dist/`):
+
+```bash
+npm install
+npm run dev    # development (live reload)
+# or
+npm run build   # production bundle
+```
 
 2. In the Figma desktop app:
-   - Open a file.
-   - Press `Cmd/Ctrl + K` to open the [Actions menu](https://help.figma.com/hc/en-us/articles/23570416033943-Use-the-actions-menu-in-Figma-Design).
-   - Search for **“Import plugin from manifest…”**
-   - Select `dist/manifest.json`.
+    - Open a file.
+    - Press `Cmd/Ctrl + K` and search for **Import plugin from manifest...**
+    - Select `dist/manifest.json`.
 
-After importing, open the Actions menu again to find and run your plugin.
-Keep the dev server running for instant reloads while testing in Figma.
+3. Run the plugin from the Actions menu.
 
-Edit `./manifest.json` in the project root to update your plugin details.
+## Quick usage
 
-### Before Publishing
+- Open the plugin and type a variable name or partial term.
+- Select the search scope (All pages / Current page / Selection).
+- Click a result to navigate to the node in the document.
 
-When your plugin is ready to publish, create a production build.
-This optimizes and minifies your code, and ensures the output no longer points to the dev server.
+---
+
+# Development
+
+## Requirements
+
+- Node.js (recommended LTS)
+- Figma desktop app (for local testing)
+
+## Development & build
+
+- Start dev server (Plugma):
+
+```bash
+npm run dev
+```
+
+- Build production bundle:
 
 ```bash
 npm run build
 ```
 
-The build in `dist/` is now ready to upload via the Figma desktop app.
-
-### Integrations
-
-Add integrations to extend your plugin with common tools and frameworks.
+- Create a release:
 
 ```bash
-npm create plugma@latest add
+npm run release
 ```
 
-### Advanced
+## Scripts
 
-See the [Plugma docs](https://plugma.dev/docs) for more information.
+- `npm run dev` — development server with live rebuilds
+- `npm run build` — production build
+- `npm run release` — release packaging
+- `npm run format` — format code (Prettier)
+- `npm run lint` — lint code (ESLint)
+- `npm run vitest` — unit tests (Vitest)
+- `npm run playwright` — E2E tests (Playwright)
+
+## Testing
+
+- Unit tests: `npm run vitest`
+- E2E tests: `npm run playwright`
+
+## Formatting & pre-commit checks
+
+- Format: `npm run format` (Prettier)
+- Lint: `npm run lint` (ESLint)
+- Pre-commit hooks: Husky + lint-staged are configured. Ensure the `prepare` script is present in `package.json` and run `npm install` to enable hooks locally.
+
+## Contributing & commit rules
+
+See `CONTRIBUTING.md` for contribution guidelines, Conventional Commits rules, and examples. The repository enforces commit messages via `commitlint` and Husky hooks.
+
+## Architecture
+
+The plugin is split into two processes:
+
+- Main process (`src/main/`) — runs in Figma's main thread and contains RPC handlers and the variable search service.
+- UI process (`src/ui/`) — React UI running in an iframe; communicates with main via the RPC client.
+
+Shared types and RPC contracts live in `src/shared/`.
+
+## License & contact
+
+See `LICENSE`. Open issues or PRs on this repository for questions or contributions.
+
+---
