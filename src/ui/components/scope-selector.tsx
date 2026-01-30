@@ -4,9 +4,10 @@ import type { SearchScope } from '../../shared/rpc-types';
 import { useShallow } from 'zustand/react/shallow';
 
 const ScopeSelector = () => {
-	const { setScope } = usePluginStore(
+	const { setScope, isSearching } = usePluginStore(
 		useShallow((state) => ({
 			setScope: state.setSearchScope,
+			isSearching: state.isSearching,
 		})),
 	);
 
@@ -18,9 +19,27 @@ const ScopeSelector = () => {
 				onValueChange={(value) => setScope(value as SearchScope)}
 			>
 				<TabsList className="bg-[#E5E6E8] text-sm font-medium font-sans">
-					<TabsTrigger value="all-pages">All Pages</TabsTrigger>
-					<TabsTrigger value="current-page">Current Page</TabsTrigger>
-					<TabsTrigger value="selection">Selection</TabsTrigger>
+					<TabsTrigger
+						value="all-pages"
+						className="hover:cursor-pointer"
+						disabled={isSearching}
+					>
+						All Pages
+					</TabsTrigger>
+					<TabsTrigger
+						value="current-page"
+						className="hover:cursor-pointer"
+						disabled={isSearching}
+					>
+						Current Page
+					</TabsTrigger>
+					<TabsTrigger
+						value="selection"
+						className="hover:cursor-pointer"
+						disabled={isSearching}
+					>
+						Selection
+					</TabsTrigger>
 				</TabsList>
 			</Tabs>
 		</div>
