@@ -96,4 +96,56 @@ For breaking changes, include either a `!` after the type/scope (e.g., `feat!:`)
 - Maintain a constructive tone in reviews. Provide rationale for requested changes.
 - Maintainers may close or modify PRs that do not follow contribution guidelines.
 
+## Pull Requests, Titles & Automated Checks
+
+- PR titles and descriptions must follow the project's conventions. The repository runs an automated PR lint workflow that validates PR titles (Conventional Commits style) and requires a meaningful description.
+- Use clear, imperative titles (examples in the `Commit Messages` section apply). Include related issue references (e.g., `Closes #123`).
+- A PR template is available to guide authors — fill it in with motivation, change summary, and verification steps.
+
+### Branch protection & required checks
+
+NOTE: At the moment this repository does not enforce branch protection or require status checks for merging. The CI workflows (PR lint, tests, lint/format) run on PRs and pushes, but GitHub will not block merges automatically.
+
+Recommended practice:
+- Treat the CI checks as required: ensure PR lint and local tests pass before requesting review.
+- If you are a maintainer, consider enabling branch protection in the repository settings to require specific status checks before merging.
+
+If a status check is failing, fix the issue and push a new commit. Maintainers may re-run CI or perform the necessary checks locally before merging.
+
+### Local verification
+
+Before opening a PR, please run the following locally to catch issues early:
+
+```bash
+# install deps (only once)
+npm install
+
+# format & lint
+npm run format
+npm run lint
+
+# run unit tests
+npm run vitest
+
+# run commit message check against last commit (example)
+npx --no-install commitlint --from HEAD~1 --to HEAD --verbose
+```
+
+If a commit is rejected by the local commit-msg hook, amend the commit message and re-run:
+
+```bash
+npx --no-install commitlint --edit "$1"
+# or
+git commit --amend
+```
+
+### Merging
+
+- Since branch protection is not enforced, maintainers may merge PRs after verifying that changes are safe. However, the preferred workflow is:
+	- Ensure CI (PR lint) passes and local tests/lint/format succeed.
+	- Obtain the required reviews.
+	- Merge using the repository's preferred strategy (squash or rebase+merge).
+
+If your PR cannot run certain checks because it's from a fork, request a maintainer to run the workflow or open the PR from a branch in this repository.
+
 Thank you for helping improve the project!
