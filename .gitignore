@@ -29,3 +29,40 @@ vite.config.ui.js.timestamp-*
 vite.config.ui.ts.timestamp-*
 vite.config.main.js.timestamp-*
 vite.config.main.ts.timestamp-*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.* 
+
+# Coverage & test output
+coverage/
+.nyc_output/
+
+# Build caches and temporary files
+.cache
+.parcel-cache
+.vite
+.storybook
+.next
+.out
+.build
+dist-ssr
+dist
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Package manager files (local caches)
+.pnp.*
+.pnpm-store
+
+# Misc
+.sass-cache
+*.zip
+*.tgz
+
+# Playwright/Vitest artifacts
+test-results/
+playwright-report/
