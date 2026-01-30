@@ -75,6 +75,7 @@ function CommandInput({
 				)}
 				{...props}
 			/>
+			<CommandShortcut className="text-nowrap">Search ↵</CommandShortcut>
 		</div>
 	);
 }
