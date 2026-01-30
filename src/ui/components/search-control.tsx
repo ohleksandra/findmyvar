@@ -13,6 +13,7 @@ import {
 import InstanceIcon from './instance-icon';
 import { cn } from '@/lib/utils';
 import { CommandSeparator } from 'cmdk';
+
 const SearchControl = () => {
 	const { variables, setSearchQuery, searchQuery, startSearch, scope } = usePluginStore(
 		useShallow((state) => ({
@@ -50,7 +51,7 @@ const SearchControl = () => {
 			<Command
 				className={cn(
 					'bg-white border-none search-input-shadow',
-					// isSuggestionsOpen ? 'rounded-b-none border-none' : 'rounded-[12px]',
+					isSuggestionsOpen ? 'rounded-b-none border-none' : 'rounded-[12px]',
 				)}
 				shouldFilter={false}
 				loop
