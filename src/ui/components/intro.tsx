@@ -1,6 +1,6 @@
 import React from 'react';
 import LogoInverted from './icons/logo-inverted';
-import { LocateFixed, Search } from 'lucide-react';
+import { ArrowUpRight, Search } from 'lucide-react';
 
 const Intro = () => {
 	return (
@@ -16,7 +16,7 @@ const Intro = () => {
 					<span>Type variable name to search</span>
 				</p>
 				<p className="flex items-center gap-x-1">
-					<LocateFixed className="w-4 h-4" /> <span>Click results to navigate</span>
+					<ArrowUpRight className="w-4 h-4" /> <span>Click results to navigate</span>
 				</p>
 			</div>
 		</div>
