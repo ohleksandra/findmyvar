@@ -26,7 +26,7 @@ const VariableUsage = ({ variable }: VariableUsageProps) => {
 				type="button"
 				className={cn(
 					'flex w-full pl-7 pr-5 py-1.5 cursor-pointer',
-					isHovered ? 'bg-[#F5F5F6]' : 'bg-white',
+					isHovered ? 'bg-[#F5F5F6] cursor-pointer' : 'bg-white',
 				)}
 				onMouseEnter={() => setIsHovered(true)}
 				onMouseLeave={() => setIsHovered(false)}
@@ -35,11 +35,11 @@ const VariableUsage = ({ variable }: VariableUsageProps) => {
 				<div>
 					<Component />
 				</div>
-				<div className="flex flex-col items-start ml-1">
+				<div className="flex flex-col items-start ml-1 gap-y-0.5">
 					<div className="flex font-sans font-medium gap-x-2 items-center">
 						<p
 							className={cn(
-								'font-sans font-medium text-xs leading-4',
+								'font-sans font-medium text-xs leading-4 text-left line-clamp-1',
 								isHovered ? 'underline' : '',
 							)}
 						>
