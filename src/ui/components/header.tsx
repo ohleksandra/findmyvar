@@ -12,7 +12,7 @@ const Header = () => {
 		})),
 	);
 	return (
-		<div className="sticky top-0 flex flex-col w-full px-6 bg-[#F5F5F6] pt-6 pb-4">
+		<div className="sticky top-0 flex flex-col w-full px-6 bg-[#F5F5F6] pt-6 pb-4 border-b ">
 			<div className="flex flex-col gap-y-4">
 				<SearchControl />
 				{recentSearches.length > 0 && <RecentSearchList />}
