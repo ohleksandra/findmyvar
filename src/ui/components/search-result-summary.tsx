@@ -1,4 +1,3 @@
-import React from 'react';
 import { Badge } from './ui/badge';
 import InstanceIcon from './instance-icon';
 import type { Variable } from '../../shared/rpc-types';

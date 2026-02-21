@@ -6,6 +6,7 @@ import Header from './components/header';
 import Intro from './components/intro';
 import ProgressPane from './components/progress-pane';
 import { AnimatePresence } from 'motion/react';
+import SearchPane from './components/search-pane';
 
 const App = () => {
 	const { fetchVariables, isSearching, isSearchCompleted } = usePluginStore(
@@ -25,11 +26,9 @@ const App = () => {
 	}, [fetchVariables]);
 
 	return (
-		<div className="flex flex-col w-full h-screen overflow-hidden">
+		<div className="grid grid-rows-[auto_1fr] h-full overflow-hidden max-h-200">
 			<Header />
-			<AnimatePresence>{isSearching && <ProgressPane key="progress-pane" />}</AnimatePresence>
-			{!isSearching && !isSearchCompleted && <Intro />}
-			{(isSearching || isSearchCompleted) && <SearchResult />}
+			<SearchPane />
 		</div>
 	);
 };

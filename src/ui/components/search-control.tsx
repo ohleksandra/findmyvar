@@ -72,7 +72,7 @@ const SearchControl = () => {
 				/>
 
 				{isSuggestionsOpen && (
-					<CommandList className="absolute top-full w-full bg-white rounded-bl-2xl rounded-br-2xl search-suggestions-shadow z-50">
+					<CommandList className="absolute top-full w-full bg-white rounded-bl-2xl rounded-br-2xl search-suggestions-shadow">
 						<CommandSeparator />
 						<CommandGroup>
 							{suggestions.map(({ variable }) => (
