@@ -66,3 +66,7 @@ dist
 # Playwright/Vitest artifacts
 test-results/
 playwright-report/
+
+overview.md
+
+docs/

@@ -10,8 +10,14 @@ interface CacheEntry {
 	scope: SearchScope;
 }
 
-const YIELD_INTERVAL = 16;
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+interface SearchTarget {
+	page: PageNode;
+	topLevelNodes: SceneNode[];
+}
+
+const CACHE_TTL = 5 * 60 * 1000;
+const RESULTS_BATCH_SIZE = 50;
+const NODE_THRESHOLD_FOR_RECURSION = 100;
 
 class VariableSearchService {
 	private cache: Map<string, CacheEntry> = new Map();
@@ -74,91 +80,85 @@ class VariableSearchService {
 				processed: 0,
 				total: 0,
 				currentPage: 'No selection',
-				// scope,
 			});
 
 			this.activeSearchId = null;
 			return;
 		}
 
+		const signal = { cancelled: false };
+
 		try {
 			figma.skipInvisibleInstanceChildren = true;
 
 			const allResults: VariableUsage[] = [];
-
-			// await figma.loadAllPagesAsync(); Is it really needed here?
-			// Get targets based on scope
 			const targets = await this.getSearchTargets(scope);
 
-			let totalNodes = 0;
-			for (const target of targets) {
-				totalNodes += target.nodes.length;
-			}
+			const totalTopLevelNodes = targets.reduce((sum, t) => sum + t.topLevelNodes.length, 0);
 
-			console.log(`[VariableSearch] Scope: ${scope}, Total nodes: ${totalNodes}`);
+			console.log(
+				`[VariableSearch] Scope: ${scope}, Pages: ${targets.length}, Top-level nodes: ${totalTopLevelNodes}`,
+			);
 
-			// Process nodes
-			let processedNodes = 0;
-			let lastYieldTime = Date.now();
+			let processedTopLevelNodes = 0;
 			let pendingResults: VariableUsage[] = [];
 
-			for (const { page, nodes } of targets) {
-				if (this.activeSearchId !== searchId) return;
+			for (const { page, topLevelNodes } of targets) {
+				if (!this.isActiveSearch(searchId)) {
+					signal.cancelled = true;
+					return;
+				}
 
 				const pageId = page.id;
 				const pageName = page.name;
 
-				for (let i = 0; i < nodes.length; i++) {
-					const node = nodes[i];
-					const fields = this.getVariableBindings(node, variableId);
+				for (const topNode of topLevelNodes) {
+					if (!this.isActiveSearch(searchId)) {
+						console.log('[VariableSearch] Cancelled during page traversal');
+						signal.cancelled = true;
+						return;
+					}
 
-					if (fields) {
-						for (const field of fields) {
-							const usage: VariableUsage = {
-								nodeId: node.id,
-								nodeName: node.name,
-								nodeType: node.type,
-								field,
-								pageName,
-								pageId,
-							};
-							allResults.push(usage);
-							pendingResults.push(usage);
+					const nodes = await this.findNodesWithBindingsChunked(topNode, signal);
+					processedTopLevelNodes++;
+
+					for (const node of nodes) {
+						const fields = this.getVariableBindings(node, variableId);
+
+						if (fields) {
+							for (const field of fields) {
+								const usage: VariableUsage = {
+									nodeId: node.id,
+									nodeName: node.name,
+									nodeType: node.type,
+									field,
+									pageName,
+									pageId,
+								};
+								allResults.push(usage);
+								pendingResults.push(usage);
+							}
 						}
 					}
 
-					processedNodes++;
-
-					// Time-based yield
-					const now = Date.now();
-					if (now - lastYieldTime >= YIELD_INTERVAL) {
-						if (pendingResults.length > 0) {
-							rpcServer.notify('variableSearch.results', {
-								results: pendingResults,
-								isComplete: false,
-							});
-							pendingResults = [];
-						}
-
-						rpcServer.notify('variableSearch.progress', {
-							processed: processedNodes,
-							total: totalNodes,
-							currentPage: pageName,
-							// scope,
+					if (pendingResults.length >= RESULTS_BATCH_SIZE) {
+						rpcServer.notify('variableSearch.results', {
+							results: pendingResults,
+							isComplete: false,
 						});
-
-						await this.yieldToMain();
-						lastYieldTime = Date.now();
-
-						if (this.activeSearchId !== searchId) {
-							console.log('[VariableSearch] Cancelled after yield');
-							return;
-						}
+						pendingResults = [];
 					}
+
+					rpcServer.notify('variableSearch.progress', {
+						processed: processedTopLevelNodes,
+						total: totalTopLevelNodes,
+						currentPage: pageName,
+					});
+
+					await this.yieldToMain();
 				}
 			}
 
-			// Send remaining results
 			if (pendingResults.length > 0) {
 				rpcServer.notify('variableSearch.results', {
 					results: pendingResults,
@@ -166,20 +166,17 @@ class VariableSearchService {
 				});
 			}
 
-			// Complete
 			rpcServer.notify('variableSearch.results', {
 				results: [],
 				isComplete: true,
 			});
 
 			rpcServer.notify('variableSearch.progress', {
-				processed: totalNodes,
-				total: totalNodes,
+				processed: totalTopLevelNodes,
+				total: totalTopLevelNodes,
 				currentPage: 'Complete',
-				// scope,
 			});
 
-			// Cache results
 			this.cache.set(cacheKey, {
 				variableId,
 				scope,
@@ -200,12 +197,57 @@ class VariableSearchService {
 		}
 	}
 
+	private isActiveSearch(searchId: string): boolean {
+		return this.activeSearchId === searchId;
+	}
+
+	private hasBoundVariables = (node: SceneNode): boolean => {
+		return 'boundVariables' in node && node.boundVariables !== null;
+	};
+
+	private findNodesWithBindingsSync(node: SceneNode): SceneNode[] {
+		if ('findAll' in node && typeof node.findAll === 'function') {
+			return node.findAll(this.hasBoundVariables) as SceneNode[];
+		}
+		return this.hasBoundVariables(node) ? [node] : [];
+	}
+
+	private async findNodesWithBindingsChunked(
+		node: SceneNode,
+		signal: { cancelled: boolean },
+	): Promise<SceneNode[]> {
+		if (signal.cancelled) return [];
+
+		if ('children' in node && node.children.length > NODE_THRESHOLD_FOR_RECURSION) {
+			const results: SceneNode[] = [];
+
+			if (this.hasBoundVariables(node)) {
+				results.push(node);
+			}
+
+			for (const child of node.children) {
+				if (signal.cancelled) break;
+				const childResults = await this.findNodesWithBindingsChunked(
+					child as SceneNode,
+					signal,
+				);
+				results.push(...childResults);
+				await this.yieldToMain();
+			}
+
+			return results;
+		}
+
+		return this.findNodesWithBindingsSync(node);
+	}
+
 	private handleDocumentChange(event: DocumentChangeEvent): void {
 		const relevantChange = event.documentChanges.some((change) => {
 			return (
 				change.type === 'CREATE' ||
 				change.type === 'DELETE' ||
-				(change.type === 'PROPERTY_CHANGE' && change.properties.includes('boundVariables'))
+				(change.type === 'PROPERTY_CHANGE' &&
+					(change.properties as string[]).includes('boundVariables'))
 			);
 		});
 
@@ -295,54 +337,38 @@ class VariableSearchService {
 		return `${variableId}:${scope}`;
 	}
 
-	private async getSearchTargets(scope: SearchScope): Promise<
-		Array<{
-			page: PageNode;
-			nodes: SceneNode[];
-		}>
-	> {
+	private async getSearchTargets(scope: SearchScope): Promise<SearchTarget[]> {
 		await figma.loadAllPagesAsync();
+
 		switch (scope) {
 			case 'all-pages':
 				return figma.root.children.map((page) => ({
 					page,
-					nodes: page.findAll() as SceneNode[],
+					topLevelNodes: page.children as SceneNode[],
 				}));
 
 			case 'current-page':
 				return [
 					{
 						page: figma.currentPage,
-						nodes: figma.currentPage.findAll() as SceneNode[],
+						topLevelNodes: figma.currentPage.children as SceneNode[],
 					},
 				];
+
 			case 'selection': {
 				const selection = figma.currentPage.selection;
 				if (selection.length === 0) {
 					return [];
 				}
-				const nodes: SceneNode[] = [];
-
-				const collectNodes = (node: SceneNode) => {
-					nodes.push(node);
-					if ('children' in node) {
-						for (const child of node.children) {
-							collectNodes(child as SceneNode);
-						}
-					}
-				};
-
-				for (const node of selection) {
-					collectNodes(node);
-				}
 
 				return [
 					{
 						page: figma.currentPage,
-						nodes,
+						topLevelNodes: selection as SceneNode[],
 					},
 				];
 			}
+
 			default:
 				return [];
 		}
