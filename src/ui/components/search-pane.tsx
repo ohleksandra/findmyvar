@@ -5,9 +5,7 @@ import Intro from './intro';
 import SearchResult from './search-result';
 import NoResults from './no-results';
 
-type Props = {};
-
-const SearchPane = (props: Props) => {
+const SearchPane = () => {
 	const { isSearching, isSearchCompleted, searchResults } = usePluginStore(
 		useShallow((state) => ({
 			isSearching: state.isSearching,
@@ -21,7 +19,7 @@ const SearchPane = (props: Props) => {
 			{isSearching && <ProgressPane />}
 			{!isSearching && !isSearchCompleted && <Intro />}
 			{searchResults.length > 0 && <SearchResult />}
-			{isSearchCompleted && searchResults.length === 0 && <NoResults />}
+			{!isSearching && isSearchCompleted && searchResults.length === 0 && <NoResults />}
 		</div>
 	);
 };

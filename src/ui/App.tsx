@@ -1,15 +1,11 @@
 import { useEffect } from 'react';
 import { usePluginStore, initSearchListeners } from './store/plugin-store';
-import SearchResult from './components/search-result';
 import { useShallow } from 'zustand/react/shallow';
 import Header from './components/header';
-import Intro from './components/intro';
-import ProgressPane from './components/progress-pane';
-import { AnimatePresence } from 'motion/react';
 import SearchPane from './components/search-pane';
 
 const App = () => {
-	const { fetchVariables, isSearching, isSearchCompleted } = usePluginStore(
+	const { fetchVariables } = usePluginStore(
 		useShallow((state) => ({
 			fetchVariables: state.getAllVariables,
 			isSearching: state.isSearching,
@@ -18,7 +14,6 @@ const App = () => {
 		})),
 	);
 
-	// Init
 	useEffect(() => {
 		fetchVariables();
 		const cleanup = initSearchListeners();
@@ -26,7 +21,7 @@ const App = () => {
 	}, [fetchVariables]);
 
 	return (
-		<div className="grid grid-rows-[auto_1fr] h-full overflow-hidden max-h-200">
+		<div className="grid grid-rows-[auto_1fr] h-full overflow-hidden">
 			<Header />
 			<SearchPane />
 		</div>
