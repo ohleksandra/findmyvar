@@ -7,7 +7,7 @@ const BooleanOperationIcon = (props: Props) => {
 		<svg viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
 			<mask
 				id="mask0_3257_11122"
-				style="mask-type:luminance"
+				style={{ maskType: 'luminance' }}
 				maskUnits="userSpaceOnUse"
 				x="0"
 				y="0"
