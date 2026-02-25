@@ -1,5 +1,4 @@
 import {
-	isRpcNotification,
 	isRpcRequest,
 	RpcNotification,
 	RpcNotificationMessage,
@@ -9,6 +8,7 @@ import {
 	RpcResponse,
 	RpcResponseMessage,
 } from '../../shared/rpc-types';
+import { formatDuration, logger } from './logger';
 
 type RpcHandler<T extends RpcProcedure> = (
 	payload: RpcRequest<T>,
@@ -19,14 +19,12 @@ type HandlerRegistry = Partial<{
 }>;
 
 interface RpcServerConfig {
-	debug: boolean;
 	onError?: (procedure: string, error: Error) => void;
 }
 
 const DEFAULT_CONFIG: RpcServerConfig = {
-	debug: false,
 	onError: (procedure, error) => {
-		console.error(`[RPC Server] Error in procedure "${procedure}":`, error);
+		logger.error(`[RPC Server] Error in procedure "${procedure}":`, error);
 	},
 };
 
@@ -40,11 +38,10 @@ class RpcServer {
 
 	registerHandler<T extends RpcProcedure>(procedure: T, handler: RpcHandler<T>): this {
 		if (this.handlers[procedure]) {
-			console.warn(`[RPC Server] Overwriting existing handler for "${procedure}"`);
+			logger.warn(`[RPC Server] Overwriting existing handler for "${procedure}"`);
 		}
 
 		this.handlers[procedure] = handler as HandlerRegistry[T];
-		this.log(`Registered handler for "${procedure}"`);
 
 		return this;
 	}
@@ -54,40 +51,36 @@ class RpcServer {
 			return false;
 		}
 
-		const { id, procedure, payload } = msg;
+		const { id, procedure } = msg;
 		const startTime = Date.now();
 
-		this.log(`Received "${procedure}" (id: ${id})`);
+		logger.debug(`[RPC Server] "${procedure}"`);
 
-		// Find handler
 		const handler = this.handlers[procedure];
 
 		if (!handler) {
 			this.sendError(id, procedure, `Unknown procedure: "${procedure}"`);
-			console.error(`[RPC Server] No handler for "${procedure}"`);
+			logger.error(`[RPC Server] Error: No handler for "${procedure}"`);
 			return true;
 		}
 
 		try {
 			const response = await Promise.resolve(
-				(handler as RpcHandler<typeof procedure>)(payload),
+				(handler as RpcHandler<typeof procedure>)(msg.payload),
 			);
 
-			const duration = Date.now() - startTime;
-			this.log(`"${procedure}" completed in ${duration}ms`);
+			logger.debug(
+				`[RPC Server] "${procedure}" completed in ${formatDuration(Date.now() - startTime)}`,
+			);
 
 			this.sendResponse(id, procedure, response);
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
+			logger.error(`[RPC Server] Error in "${procedure}":`, error);
 
-			const duration = Date.now() - startTime;
-			console.error(`[RPC Server] "${procedure}" failed after ${duration} ms:`, error);
-
-			// Call error hook if configured
 			if (this.config.onError) {
 				this.config.onError(
 					procedure,
-					error instanceof Error ? error : new Error(errorMessage),
+					error instanceof Error ? error : new Error(String(error)),
 				);
 			}
 		}
@@ -103,7 +96,6 @@ class RpcServer {
 		};
 
 		figma.ui.postMessage(message);
-		this.log(`Sent notification "${notification}"`, message);
 	}
 
 	hasHandler(procedure: RpcProcedure): boolean {
@@ -139,19 +131,9 @@ class RpcServer {
 
 		figma.ui.postMessage(message);
 	}
-
-	private log(message: string, data?: unknown): void {
-		if (this.config.debug) {
-			console.log(
-				`%c[RPC Server] ${message}`,
-				'color: #fff; background: #7c3aed; padding: 2px 6px; border-radius: 3px; font-weight: bold;',
-				data ?? '',
-			);
-		}
-	}
 }
 
-export const rpcServer = new RpcServer({ debug: true });
+export const rpcServer = new RpcServer();
 
 export { RpcServer };
 export type { RpcHandler, RpcServerConfig };
