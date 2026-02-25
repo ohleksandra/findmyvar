@@ -1,4 +1,5 @@
 import { SearchScope, VariableUsage } from '../../shared/rpc-types';
+import { formatDuration, logger } from '../lib/logger';
 import { rpcServer } from '../lib/rpc-server';
 
 interface CacheEntry {
@@ -33,7 +34,7 @@ class VariableSearchService {
 		});
 
 		this.isInitialized = true;
-		console.log('[VariableSearch] Service initialized');
+		logger.log('[VariableSearch] Initialized');
 	}
 
 	clearCache(variableId?: string): void {
@@ -46,7 +47,7 @@ class VariableSearchService {
 
 	cancelSearch(): void {
 		if (this.activeSearchId) {
-			console.log(`[VariableSearch] Cancelled: ${this.activeSearchId}`);
+			logger.log('[VariableSearch] Cancelled');
 			this.activeSearchId = null;
 		}
 	}
@@ -54,12 +55,15 @@ class VariableSearchService {
 	async search(variableId: string, scope: SearchScope): Promise<void> {
 		const searchId = `${variableId}-${Date.now()}`;
 		this.activeSearchId = searchId;
+		const startTime = Date.now();
 
 		const cacheKey = this.getCacheKey(variableId, scope);
 		const cached = this.cache.get(cacheKey);
 
 		if (cached && this.isCacheValid(cached)) {
-			console.log(`[VariableSearch] Cache hit: ${cached.results.length} results`);
+			logger.log(
+				`[VariableSearch] Cache hit: ${cached.results.length} results (${formatDuration(Date.now() - startTime)})`,
+			);
 
 			rpcServer.notify('variableSearch.results', {
 				results: cached.results,
@@ -96,10 +100,6 @@ class VariableSearchService {
 
 			const totalTopLevelNodes = targets.reduce((sum, t) => sum + t.topLevelNodes.length, 0);
 
-			console.log(
-				`[VariableSearch] Scope: ${scope}, Pages: ${targets.length}, Top-level nodes: ${totalTopLevelNodes}`,
-			);
-
 			let processedTopLevelNodes = 0;
 			let pendingResults: VariableUsage[] = [];
 
@@ -114,7 +114,6 @@ class VariableSearchService {
 
 				for (const topNode of topLevelNodes) {
 					if (!this.isActiveSearch(searchId)) {
-						console.log('[VariableSearch] Cancelled during page traversal');
 						signal.cancelled = true;
 						return;
 					}
@@ -186,7 +185,9 @@ class VariableSearchService {
 				selectionKey: scope === 'selection' ? this.getSelectionKey() : undefined,
 			});
 
-			console.log(`[VariableSearch] Done. Found ${allResults.length} usages`);
+			logger.log(
+				`[VariableSearch] Done: ${allResults.length} results in ${formatDuration(Date.now() - startTime)}`,
+			);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Unknown error';
 			rpcServer.notify('variableSearch.error', { error: message });
@@ -253,9 +254,6 @@ class VariableSearchService {
 
 		if (relevantChange) {
 			this.documentChangeCount++;
-			console.log(
-				`[VariableSearch] Document changed, invalidation counter: ${this.documentChangeCount}`,
-			);
 		}
 	}
 

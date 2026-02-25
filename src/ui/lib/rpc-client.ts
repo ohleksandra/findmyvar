@@ -10,6 +10,7 @@ import {
 	type RpcResponseMessage,
 } from '../../shared/rpc-types';
 import { nanoid } from 'nanoid';
+import { formatDuration, logger } from './logger';
 
 interface PendingRequest<T = unknown> {
 	resolve: (value: T) => void;
@@ -27,12 +28,10 @@ type NotificationHandlerRegistry = Partial<{
 
 interface RpcClientConfig {
 	defaultTimeout: number;
-	debug: boolean;
 }
 
 const DEFAULT_CONFIG: RpcClientConfig = {
 	defaultTimeout: 30_000,
-	debug: false,
 };
 
 class RpcClient {
@@ -48,21 +47,18 @@ class RpcClient {
 
 	init(): void {
 		if (this.initialized) {
-			this.log('RPC client already initialized, skipping');
 			return;
 		}
 
 		window.addEventListener('message', this.handleMessage);
 		this.initialized = true;
-		this.log('RPC client initialized ✅');
+		logger.log('[Plugin UI] Initialized');
 	}
 
 	destroy(): void {
 		if (!this.initialized) return;
 
 		window.removeEventListener('message', this.handleMessage);
-
-		const pendingCount = this.pending.size;
 
 		for (const [, request] of this.pending) {
 			clearTimeout(request.timeoutId);
@@ -72,9 +68,7 @@ class RpcClient {
 		}
 
 		this.pending.clear();
-
 		this.initialized = false;
-		this.log(`RPC client destroyed, cancelled ${pendingCount} pending requests`);
 	}
 
 	call<T extends RpcProcedure>(
@@ -86,12 +80,11 @@ class RpcClient {
 			return Promise.reject(new Error('RPC client not initialized. Call rpc.init() first.'));
 		}
 
-		// const id = window.crypto.getRandomValues(new Uint32Array(1))[0].toString(16);
 		const id = nanoid();
 		const timeout = options?.timeout ?? this.config.defaultTimeout;
 		const startTime = Date.now();
 
-		this.log(`Calling "${procedure}" with id ${id}`, payload);
+		logger.debug(`[RPC Client] "${procedure}"`);
 
 		return new Promise<RpcResponse<T>>((resolve, reject) => {
 			const timeoutId = setTimeout(() => {
@@ -100,7 +93,7 @@ class RpcClient {
 					const elapsed = Date.now() - startTime;
 					reject(
 						new Error(
-							`RPC call "${procedure}" timed out after ${elapsed}ms (limit: ${timeout}ms)`,
+							`RPC call "${procedure}" timed out after ${formatDuration(elapsed)} (limit: ${formatDuration(timeout)})`,
 						),
 					);
 				}
@@ -133,12 +126,8 @@ class RpcClient {
 		const handlers = this.notificationHandlers[notification] as Set<NotificationHandler<T>>;
 		handlers.add(handler);
 
-		this.log(`Subscribed to "${notification}"`);
-
-		// Return unsubscribe function
 		return () => {
 			handlers.delete(handler);
-			this.log(`Unsubscribed from "${notification}"`);
 		};
 	}
 
@@ -177,7 +166,6 @@ class RpcClient {
 		const pending = this.pending.get(id);
 
 		if (!pending) {
-			this.log(`Received response for unknown id: ${id}`, msg);
 			return;
 		}
 
@@ -187,20 +175,17 @@ class RpcClient {
 		const duration = Date.now() - pending.startTime;
 
 		if (error !== undefined) {
-			this.log(`"${procedure}" failed after ${duration}ms:`, error);
+			logger.error(`[RPC Client] Error in "${procedure}": ${error}`);
 			pending.reject(new Error(error));
 		} else {
-			this.log(`"${procedure}" succeeded after ${duration}ms`, response);
+			logger.debug(`[RPC Client] "${procedure}" completed in ${formatDuration(duration)}`);
 			pending.resolve(response);
 		}
 	}
 
 	private handleNotification(notification: RpcNotification, payload: unknown): void {
-		this.log(`Received notification "${notification}"`, payload);
-
 		const handlers = this.notificationHandlers[notification];
 		if (!handlers || handlers.size === 0) {
-			this.log(`No handlers for "${notification}"`);
 			return;
 		}
 
@@ -210,19 +195,9 @@ class RpcClient {
 					payload as RpcNotificationPayload<typeof notification>,
 				);
 			} catch (error) {
-				console.error(`[RPC Client] Handler error for "${notification}":`, error);
+				logger.error(`[RPC Client] Error in handler for "${notification}":`, error);
 			}
 		});
-	}
-
-	private log(message: string, data?: unknown): void {
-		if (this.config.debug) {
-			console.log(
-				'%c[RPC Client] ' + message,
-				'color: #fff; background: #2563eb; padding: 2px 6px; border-radius: 3px; font-weight: bold;',
-				data ?? '',
-			);
-		}
 	}
 
 	getPendingCount(): number {
@@ -234,7 +209,7 @@ class RpcClient {
 	}
 }
 
-export const rpcClient = new RpcClient({ debug: true });
+export const rpcClient = new RpcClient();
 
 export function callPlugin<T extends RpcProcedure>(
 	procedure: T,
