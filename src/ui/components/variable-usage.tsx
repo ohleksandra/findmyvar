@@ -43,7 +43,7 @@ const VariableUsage = ({ variable }: VariableUsageProps) => {
 						>
 							{variable.nodeName}
 						</p>
-						<span className="bg-[#DBEAFE] rounded-sm font-sans font-medium text-[10px] px-1 leading-3 capitalize">
+						<span className="bg-[#DBEAFE] rounded-xs font-sans font-medium text-[10px] px-1 leading-3 capitalize">
 							{variable.field}
 						</span>
 					</div>
