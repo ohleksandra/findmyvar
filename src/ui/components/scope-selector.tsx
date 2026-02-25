@@ -2,8 +2,11 @@ import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 import { usePluginStore } from '@/store/plugin-store';
 import type { SearchScope } from '../../shared/rpc-types';
 import { useShallow } from 'zustand/react/shallow';
+import { cn } from '@/lib/utils';
 
-const ScopeSelector = () => {
+type Props = React.HTMLAttributes<HTMLDivElement>;
+
+const ScopeSelector = (props: Props) => {
 	const { setScope, isSearching } = usePluginStore(
 		useShallow((state) => ({
 			setScope: state.setSearchScope,
@@ -12,7 +15,7 @@ const ScopeSelector = () => {
 	);
 
 	return (
-		<div className="flex items-center gap-x-2">
+		<div className={cn('flex items-center gap-x-2', props.className)}>
 			<p className="font-sans text-sm font-medium">Scope:</p>
 			<Tabs
 				defaultValue="all-pages"

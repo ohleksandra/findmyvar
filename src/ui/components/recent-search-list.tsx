@@ -2,8 +2,11 @@ import { usePluginStore } from '@/store/plugin-store';
 import { Badge } from './ui/badge';
 import { useShallow } from 'zustand/react/shallow';
 import VariableTypeIcon from './variable-type-icon';
+import { cn } from '@/lib/utils';
 
-const RecentSearchList = () => {
+type Props = React.HTMLAttributes<HTMLDivElement>;
+
+const RecentSearchList = (props: Props) => {
 	const { recentSearches, startSearch, setSearchQuery } = usePluginStore(
 		useShallow((state) => ({
 			recentSearches: state.recentSearches,
@@ -13,7 +16,7 @@ const RecentSearchList = () => {
 	);
 
 	return (
-		<div className="flex flex-col gap-y-2">
+		<div className={cn('flex flex-col gap-y-2', props.className)}>
 			<p className="text-xs not-first:font-medium text-[#656B75] font-sans">
 				Recent searches:
 			</p>
