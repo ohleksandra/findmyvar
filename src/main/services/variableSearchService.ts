@@ -133,7 +133,7 @@ class VariableSearchService {
 									field,
 									pageName,
 									pageId,
-									nodePath: this.buildNodePath(node, topNode),
+									nodePath: this.buildNodePath(node),
 								};
 								allResults.push(usage);
 								pendingResults.push(usage);
@@ -336,20 +336,40 @@ class VariableSearchService {
 		return `${variableId}:${scope}`;
 	}
 
-	private buildNodePath(node: SceneNode, topLevelNode: SceneNode): string {
-		const path: string[] = [node.name];
-		let current: BaseNode | null = node.parent;
+	private buildNodePath(node: SceneNode): string {
+		const parent = node.parent;
+		if (!parent) {
+			return '';
+		}
+
+		const path: BaseNode[] = [];
+		let current: BaseNode | null = parent;
 
 		while (current && current.type !== 'PAGE') {
-			path.unshift(current.name);
+			path.unshift(current);
 			current = current.parent;
 		}
 
-		if (path.length <= 2) {
-			return path.join('/');
+		if (path.length < 2) {
+			return '';
 		}
 
-		return `${path[0]}/.../${path[path.length - 2]}/${path[path.length - 1]}`;
+		let highestName = '';
+		for (const pathNode of path.slice(0, -1)) {
+			const name = pathNode.name?.trim();
+			if (name) {
+				highestName = name;
+				break;
+			}
+		}
+
+		const parentName = path[path.length - 1].name?.trim() || '';
+
+		if (!highestName || !parentName) {
+			return '';
+		}
+
+		return `${highestName}/.../${parentName}`;
 	}
 
 	private async getSearchTargets(scope: SearchScope): Promise<SearchTarget[]> {
