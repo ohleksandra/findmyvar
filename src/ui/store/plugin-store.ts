@@ -92,7 +92,7 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 		try {
 			await callPlugin('variableSearch.cancel', undefined as void);
 		} finally {
-			set({ isSearching: false });
+			set({ isSearching: false, isSearchCompleted: true });
 		}
 	},
 
