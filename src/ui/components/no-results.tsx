@@ -21,7 +21,6 @@ const NoResults = () => {
 	return (
 		<div className="flex flex-col w-full h-full justify-center items-center">
 			<div className="flex flex-col justify-center gap-y-4 max-w-79.5 items-center">
-				<LogoInverted className="w-32 h-32 text-red-200" />
 				<div className="flex gap-x-1">
 					<p className="font-medium text-nowrap">No results found for</p>
 					<Badge
