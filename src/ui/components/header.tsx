@@ -13,10 +13,10 @@ const Header = () => {
 	);
 	return (
 		<div className="sticky top-0 flex flex-col w-full px-6 bg-[#F5F5F6] pt-6 pb-4 border-b z-30">
-			<div className="flex flex-col gap-y-4">
+			<div className="flex flex-col">
 				<SearchControl />
-				{recentSearches.length > 0 && <RecentSearchList />}
-				<ScopeSelector />
+				{recentSearches.length > 0 && <RecentSearchList className="mt-2" />}
+				<ScopeSelector className="mt-4" />
 			</div>
 		</div>
 	);
