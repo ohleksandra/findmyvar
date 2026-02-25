@@ -10,7 +10,7 @@ import {
 	CommandItem,
 	CommandList,
 } from './ui/command';
-import InstanceIcon from './instance-icon';
+import VariableTypeIcon from './variable-type-icon';
 import { cn } from '@/lib/utils';
 import { CommandSeparator } from 'cmdk';
 
@@ -86,7 +86,7 @@ const SearchControl = () => {
 									}}
 									value={`${variable.id}-${variable.name}`}
 								>
-									<InstanceIcon
+									<VariableTypeIcon
 										type={variable.resolvedType}
 										className="inline-flex size-5 text-[#17181A]"
 									/>

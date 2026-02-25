@@ -46,7 +46,7 @@ const SearchResult = () => {
 						<AccordionTrigger className="font-sans font-semibold text-sm px-6">
 							{pageName}
 
-							<Badge className="ml-auto rounded-sm" variant="secondary">
+							<Badge className="ml-auto rounded-sm px-1.5 py-0.5" variant="secondary">
 								{results.length}
 							</Badge>
 						</AccordionTrigger>

@@ -1,5 +1,5 @@
 import { Badge } from './ui/badge';
-import InstanceIcon from './instance-icon';
+import VariableTypeIcon from './variable-type-icon';
 import type { Variable } from '../../shared/rpc-types';
 
 type Props = {
@@ -13,15 +13,15 @@ const SearchResultSummary = ({ variable, resultCount, pagesCount }: Props) => {
 		<div className="flex gap-x-1 items-center">
 			<Badge
 				variant="secondary"
-				className="rounded-sm max-w-48 flex items-center justify-start"
+				className="rounded-sm max-w-42 flex items-center justify-start"
 			>
-				<InstanceIcon type={variable.resolvedType} className="size-5!" />
+				<VariableTypeIcon type={variable.resolvedType} className="size-5!" />
 				<span className="font-mono overflow-ellipsis whitespace-nowrap overflow-x-hidden">
 					{variable.name}
 				</span>
 			</Badge>
 			<p className="font-sans text-sm">
-				was found <b>{resultCount}</b> instances accross <b>{pagesCount}</b> pages.
+				was found in <b>{resultCount}</b> instances accross <b>{pagesCount}</b> pages.
 			</p>
 		</div>
 	);

@@ -14,27 +14,18 @@ const VariableUsage = ({ variable }: VariableUsageProps) => {
 	const [isHovered, setIsHovered] = useState(false);
 
 	return (
-		<div className="flex gap-x-2">
-			{/* <div>Node type: {variable.nodeType}</div>
-			<div>Node name {variable.nodeName}</div>
-			<div>Field: {variable.field}</div>
-			<Button type="button" size="sm" onClick={async () => await navigateToResult(variable)}>
-				Navigate
-			</Button> */}
-
+		<div className="flex">
 			<button
 				type="button"
 				className={cn(
-					'flex w-full pl-7 pr-5 py-1.5 cursor-pointer',
+					'flex w-full pl-7 pr-5 py-1.5 cursor-pointer gap-x-1',
 					isHovered ? 'bg-[#F5F5F6] cursor-pointer' : 'bg-white',
 				)}
 				onMouseEnter={() => setIsHovered(true)}
 				onMouseLeave={() => setIsHovered(false)}
 				onClick={async () => await navigateToResult(variable)}
 			>
-				<div>
-					<Component />
-				</div>
+				<Component className="size-4" />
 				<div className="flex flex-col items-start ml-1 gap-y-0.5">
 					<div className="flex font-sans font-medium gap-x-2 items-center">
 						<p
