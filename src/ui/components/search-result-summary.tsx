@@ -1,5 +1,5 @@
 import { Badge } from './ui/badge';
-import InstanceIcon from './instance-icon';
+import VariableTypeIcon from './variable-type-icon';
 import type { Variable } from '../../shared/rpc-types';
 
 type Props = {
@@ -15,7 +15,7 @@ const SearchResultSummary = ({ variable, resultCount, pagesCount }: Props) => {
 				variant="secondary"
 				className="rounded-sm max-w-48 flex items-center justify-start"
 			>
-				<InstanceIcon type={variable.resolvedType} className="size-5!" />
+				<VariableTypeIcon type={variable.resolvedType} className="size-5!" />
 				<span className="font-mono overflow-ellipsis whitespace-nowrap overflow-x-hidden">
 					{variable.name}
 				</span>

@@ -1,7 +1,7 @@
 import { usePluginStore } from '@/store/plugin-store';
 import { Badge } from './ui/badge';
 import { useShallow } from 'zustand/react/shallow';
-import InstanceIcon from './instance-icon';
+import VariableTypeIcon from './variable-type-icon';
 
 const RecentSearchList = () => {
 	const { recentSearches, startSearch, setSearchQuery } = usePluginStore(
@@ -28,7 +28,7 @@ const RecentSearchList = () => {
 								await startSearch(variable);
 							}}
 						>
-							<InstanceIcon className="size-4!" type={variable.resolvedType} />
+							<VariableTypeIcon className="size-4!" type={variable.resolvedType} />
 							<span className="text-xs">{variable.name}</span>
 						</Badge>
 					</li>

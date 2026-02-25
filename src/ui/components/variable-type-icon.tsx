@@ -5,11 +5,11 @@ import NumericIcon from './icons/var-types/numeric-icon';
 import TextIcon from './icons/var-types/text-icon';
 import ColorIcon from './icons/var-types/color-icon';
 
-type InstanceIconProps = {
+type VariableTypeIcon = {
 	type: Variable['resolvedType'];
 } & React.HTMLAttributes<SVGElement>;
 
-const InstanceIcon = (props: InstanceIconProps) => {
+const VariableTypeIcon = (props: VariableTypeIcon) => {
 	switch (props.type) {
 		case 'BOOLEAN':
 			return <BooleanIcon {...props} />;
@@ -24,4 +24,4 @@ const InstanceIcon = (props: InstanceIconProps) => {
 	}
 };
 
-export default InstanceIcon;
+export default VariableTypeIcon;
