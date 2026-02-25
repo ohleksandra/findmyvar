@@ -15,7 +15,7 @@ export interface VariableUsage {
 	field: string; // e.g., 'fills', 'strokes', 'width'
 	pageName: string;
 	pageId: string;
-	nodePath: string; // e.g., 'Highest Node/.../Parent Node'
+	nodePath: string; // e.g., 'Highest Node/.../Parent Node/Current Node'
 }
 
 export interface SearchProgress {
