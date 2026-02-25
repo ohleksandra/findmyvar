@@ -29,7 +29,7 @@ const VariableUsage = ({ variable }: VariableUsageProps) => {
 				<div className="flex w-4 h-4 justify-center items-center">
 					<NodeIcon
 						type={variable.nodeType as SceneNode['type']}
-						className="text-[#656B75] size-3"
+						className="text-[#656B75] size-2.5"
 					/>
 				</div>
 
