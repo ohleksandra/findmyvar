@@ -15,45 +15,43 @@ const VariableUsage = ({ variable }: VariableUsageProps) => {
 	const [isHovered, setIsHovered] = useState(false);
 
 	return (
-		<div className="flex">
-			<button
-				type="button"
-				className={cn(
-					'flex w-full pl-7 pr-5 py-1.5 cursor-pointer gap-x-1',
-					isHovered ? 'bg-[#F5F5F6] cursor-pointer' : 'bg-white',
-				)}
-				onMouseEnter={() => setIsHovered(true)}
-				onMouseLeave={() => setIsHovered(false)}
-				onClick={async () => await navigateToResult(variable)}
-			>
-				<div className="flex w-4 h-4 justify-center items-center">
-					<NodeIcon
-						type={variable.nodeType as SceneNode['type']}
-						className="text-[#656B75] size-2.5"
-					/>
-				</div>
+		<button
+			type="button"
+			className={cn(
+				'flex w-full pl-7 pr-5 py-1.5 h-10.5 cursor-pointer gap-x-1',
+				isHovered ? 'bg-[#F5F5F6] cursor-pointer' : 'bg-white',
+			)}
+			onMouseEnter={() => setIsHovered(true)}
+			onMouseLeave={() => setIsHovered(false)}
+			onClick={async () => await navigateToResult(variable)}
+		>
+			<div className="flex w-4 h-4 justify-center items-center">
+				<NodeIcon
+					type={variable.nodeType as SceneNode['type']}
+					className="text-[#656B75] size-2.5"
+				/>
+			</div>
 
-				<div className="flex flex-col items-start ml-1 gap-y-0.5">
-					<div className="flex font-sans font-medium gap-x-2 items-center">
-						<p
-							className={cn(
-								'font-sans font-medium text-xs leading-4 text-left line-clamp-1',
-								isHovered ? 'underline' : '',
-							)}
-						>
-							{variable.nodeName}
-						</p>
-						<span className="bg-[#DBEAFE] rounded-sm font-sans font-medium text-[10px] px-1 leading-3">
-							{variable.field}
-						</span>
-					</div>
-					<p className="text-[10px] leading-3 font-sans">{variable.nodePath}</p>
+			<div className="flex flex-col items-start ml-1 gap-y-0.5">
+				<div className="flex font-sans font-medium gap-x-2 items-center">
+					<p
+						className={cn(
+							'font-sans font-medium text-xs leading-4 text-left line-clamp-1',
+							isHovered ? 'underline' : '',
+						)}
+					>
+						{variable.nodeName}
+					</p>
+					<span className="bg-[#DBEAFE] rounded-sm font-sans font-medium text-[10px] px-1 leading-3">
+						{variable.field}
+					</span>
 				</div>
-				<div className="flex ml-auto">
-					{isHovered && <ArrowUpRight className="text-[#17181A]" />}
-				</div>
-			</button>
-		</div>
+				<p className="text-[10px] leading-3 font-sans">{variable.nodePath}</p>
+			</div>
+			<div className="flex ml-auto">
+				{isHovered && <ArrowUpRight className="text-[#17181A]" />}
+			</div>
+		</button>
 	);
 };
 
