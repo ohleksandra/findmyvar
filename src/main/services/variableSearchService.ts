@@ -345,13 +345,13 @@ class VariableSearchService {
 		const path: BaseNode[] = [];
 		let current: BaseNode | null = parent;
 
-		while (current && current.type !== 'PAGE') {
+		while (current && current.type !== 'PAGE' && current.type !== 'SECTION') {
 			path.unshift(current);
 			current = current.parent;
 		}
 
 		if (path.length < 2) {
-			return '';
+			return path[0]?.name?.trim() || '';
 		}
 
 		let highestName = '';
