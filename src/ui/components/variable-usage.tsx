@@ -1,8 +1,9 @@
 import { cn } from '@/lib/utils';
 import type { VariableUsage } from '../../shared/rpc-types';
 import { usePluginStore } from '@/store/plugin-store';
-import { ArrowUpRight, Component } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { useState } from 'react';
+import NodeIcon from './node-icon';
 
 type VariableUsageProps = {
 	variable: VariableUsage;
@@ -25,7 +26,10 @@ const VariableUsage = ({ variable }: VariableUsageProps) => {
 				onMouseLeave={() => setIsHovered(false)}
 				onClick={async () => await navigateToResult(variable)}
 			>
-				<Component className="size-4" />
+				<NodeIcon
+					type={variable.nodeType as SceneNode['type']}
+					className="size-4 text-[#656B75]"
+				/>
 				<div className="flex flex-col items-start ml-1 gap-y-0.5">
 					<div className="flex font-sans font-medium gap-x-2 items-center">
 						<p

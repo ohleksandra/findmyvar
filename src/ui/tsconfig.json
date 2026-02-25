@@ -19,7 +19,8 @@
 		"composite": true,
 		"paths": {
 			"@/*": ["./*"]
-		}
+		},
+		"typeRoots": ["../../node_modules/@figma"]
 	},
 	"include": ["**/*.ts", "**/*.tsx", "../vite-env.d.ts", "../shared/**/*.ts"]
 }
