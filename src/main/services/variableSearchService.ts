@@ -133,6 +133,7 @@ class VariableSearchService {
 									field,
 									pageName,
 									pageId,
+									nodePath: this.buildNodePath(node, topNode),
 								};
 								allResults.push(usage);
 								pendingResults.push(usage);
@@ -333,6 +334,22 @@ class VariableSearchService {
 		}
 
 		return `${variableId}:${scope}`;
+	}
+
+	private buildNodePath(node: SceneNode, topLevelNode: SceneNode): string {
+		const path: string[] = [node.name];
+		let current: BaseNode | null = node.parent;
+
+		while (current && current.type !== 'PAGE') {
+			path.unshift(current.name);
+			current = current.parent;
+		}
+
+		if (path.length <= 2) {
+			return path.join('/');
+		}
+
+		return `${path[0]}/.../${path[path.length - 2]}/${path[path.length - 1]}`;
 	}
 
 	private async getSearchTargets(scope: SearchScope): Promise<SearchTarget[]> {

@@ -40,9 +40,7 @@ const VariableUsage = ({ variable }: VariableUsageProps) => {
 							{variable.field}
 						</span>
 					</div>
-					<p className="text-[10px] leading-3 font-sans">
-						Highest parent/ ... / Parent_container/Container
-					</p>
+					<p className="text-[10px] leading-3 font-sans">{variable.nodePath}</p>
 				</div>
 				<div className="flex ml-auto">
 					{isHovered && <ArrowUpRight className="text-[#17181A]" />}
