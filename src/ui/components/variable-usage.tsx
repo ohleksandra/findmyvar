@@ -32,19 +32,24 @@ const VariableUsage = ({ variable }: VariableUsageProps) => {
 				/>
 			</div>
 
-			<div className="flex flex-col items-start ml-1 gap-y-0.5">
-				<div className="flex font-sans font-medium gap-x-2 items-center">
-					<p
-						className={cn(
-							'font-sans font-medium text-xs leading-4 text-left line-clamp-1',
-							isHovered ? 'underline' : '',
-						)}
-					>
-						{variable.nodeName}
-					</p>
-					<span className="bg-[#DBEAFE] rounded-sm font-sans font-medium text-[10px] px-1 leading-3">
-						{variable.field}
-					</span>
+				<div className="flex flex-col items-start ml-1 gap-y-0.5">
+					<div className="flex font-sans font-medium gap-x-2 items-center">
+						<p
+							className={cn(
+								'font-sans font-medium text-xs leading-4 text-left line-clamp-1',
+								isHovered ? 'underline' : '',
+							)}
+						>
+							{variable.nodeName}
+						</p>
+						<span className="bg-[#DBEAFE] rounded-xs font-sans font-medium text-[10px] px-1 leading-3 capitalize">
+							{variable.field}
+						</span>
+					</div>
+					<p className="text-[10px] leading-3 font-sans">{variable.nodePath}</p>
+				</div>
+				<div className="flex ml-auto">
+					{isHovered && <ArrowUpRight className="text-[#17181A]" />}
 				</div>
 				<p className="text-[10px] leading-3 font-sans">{variable.nodePath}</p>
 			</div>
@@ -56,5 +61,3 @@ const VariableUsage = ({ variable }: VariableUsageProps) => {
 };
 
 export default VariableUsage;
-
-//
