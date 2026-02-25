@@ -15,7 +15,9 @@ const SearchResultSummary = ({ variable, resultCount, pagesCount }: Props) => {
 				variant="secondary"
 				className="rounded-sm max-w-42 flex items-center justify-start"
 			>
-				<VariableTypeIcon type={variable.resolvedType} className="size-5!" />
+				<div className="flex shrink-0">
+					<VariableTypeIcon type={variable.resolvedType} className="size-4" />
+				</div>
 				<span className="font-mono overflow-ellipsis whitespace-nowrap overflow-x-hidden">
 					{variable.name}
 				</span>
