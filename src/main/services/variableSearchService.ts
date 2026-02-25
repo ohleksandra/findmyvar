@@ -130,7 +130,7 @@ class VariableSearchService {
 									nodeId: node.id,
 									nodeName: node.name,
 									nodeType: node.type,
-									field,
+									field: field.replace('[0]', ''),
 									pageName,
 									pageId,
 									nodePath: this.buildNodePath(node),
