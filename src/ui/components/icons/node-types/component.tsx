@@ -4,7 +4,13 @@ type Props = React.SVGProps<SVGSVGElement>;
 
 const ComponentIcon = (props: Props) => {
 	return (
-		<svg viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg" {...props}>
+		<svg
+			width={12}
+			height={12}
+			viewBox="0 0 12 12"
+			xmlns="http://www.w3.org/2000/svg"
+			{...props}
+		>
 			<path
 				fillRule="evenodd"
 				clipRule="evenodd"

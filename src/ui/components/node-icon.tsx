@@ -11,7 +11,7 @@ import EllipseIcon from './icons/node-types/ellipse';
 import PolygonIcon from './icons/node-types/polygon';
 import StarIcon from './icons/node-types/star';
 import TransformGroupIcon from './icons/node-types/transform-group';
-import TextIcon from './icons/var-types/text-icon';
+import TextIcon from './icons/node-types/text';
 import RectangleIcon from './icons/node-types/recatangle';
 import SectionIcon from './icons/node-types/section';
 import SliceIcon from './icons/node-types/slice';

@@ -26,10 +26,13 @@ const VariableUsage = ({ variable }: VariableUsageProps) => {
 				onMouseLeave={() => setIsHovered(false)}
 				onClick={async () => await navigateToResult(variable)}
 			>
-				<NodeIcon
-					type={variable.nodeType as SceneNode['type']}
-					className="size-4 text-[#656B75]"
-				/>
+				<div className="flex w-4 h-4 justify-center items-center">
+					<NodeIcon
+						type={variable.nodeType as SceneNode['type']}
+						className="text-[#656B75] size-3"
+					/>
+				</div>
+
 				<div className="flex flex-col items-start ml-1 gap-y-0.5">
 					<div className="flex font-sans font-medium gap-x-2 items-center">
 						<p
