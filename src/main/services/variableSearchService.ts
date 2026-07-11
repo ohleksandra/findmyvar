@@ -98,6 +98,7 @@ class VariableSearchService {
 		}
 
 		const signal = { cancelled: false };
+		const previousSkipInvisible = figma.skipInvisibleInstanceChildren;
 
 		try {
 			figma.skipInvisibleInstanceChildren = true;
@@ -200,6 +201,7 @@ class VariableSearchService {
 			const message = error instanceof Error ? error.message : 'Unknown error';
 			rpcServer.notify('variableSearch.error', { error: message });
 		} finally {
+			figma.skipInvisibleInstanceChildren = previousSkipInvisible;
 			if (this.activeSearchId === searchId) {
 				this.activeSearchId = null;
 			}
