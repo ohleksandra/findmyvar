@@ -1,5 +1,4 @@
 import { usePluginStore } from '@/store/plugin-store';
-import LogoInverted from './icons/logo-inverted';
 import { useShallow } from 'zustand/react/shallow';
 import { Badge } from './ui/badge';
 import { useMemo } from 'react';

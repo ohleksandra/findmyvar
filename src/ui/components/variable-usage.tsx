@@ -1,12 +1,12 @@
 import { cn } from '@/lib/utils';
-import type { VariableUsage } from '../../shared/rpc-types';
+import type { VariableUsage as VariableUsageData } from '../../shared/rpc-types';
 import { usePluginStore } from '@/store/plugin-store';
 import { ArrowUpRight } from 'lucide-react';
 import { useState } from 'react';
 import NodeIcon from './node-icon';
 
 type VariableUsageProps = {
-	variable: VariableUsage;
+	variable: VariableUsageData;
 };
 
 const VariableUsage = ({ variable }: VariableUsageProps) => {

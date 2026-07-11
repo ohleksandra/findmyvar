@@ -2,9 +2,7 @@ export interface Variable {
 	id: string;
 	name: string;
 	resolvedType: 'BOOLEAN' | 'FLOAT' | 'STRING' | 'COLOR';
-	collectionId?: string;
-	collectionName?: string;
-	hiddenFromPubslishing: boolean;
+	hiddenFromPublishing: boolean;
 	remote?: boolean;
 }
 
@@ -32,19 +30,6 @@ export interface RpcProcedureSchema {
 		response: { variables: Variable[] };
 	};
 
-	'find-usage': {
-		request: { variableId: string };
-		response: { usages: VariableUsage[] };
-	};
-
-	'zoom-to-node': {
-		request: { nodeId: string; pageId: string };
-		response: { success: boolean };
-	};
-	'get-collections': {
-		request: void;
-		response: { collections: { id: string; name: string }[] };
-	};
 	'variableSearch.start': {
 		request: { variableId: string; scope: SearchScope };
 		response: { started: boolean };

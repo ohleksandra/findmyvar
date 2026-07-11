@@ -1,18 +1,10 @@
 import { useEffect } from 'react';
 import { usePluginStore, initSearchListeners } from './store/plugin-store';
-import { useShallow } from 'zustand/react/shallow';
 import Header from './components/header';
 import SearchPane from './components/search-pane';
 
 const App = () => {
-	const { fetchVariables } = usePluginStore(
-		useShallow((state) => ({
-			fetchVariables: state.getAllVariables,
-			isSearching: state.isSearching,
-			searchResults: state.searchResults,
-			isSearchCompleted: state.isSearchCompleted,
-		})),
-	);
+	const fetchVariables = usePluginStore((state) => state.getAllVariables);
 
 	useEffect(() => {
 		fetchVariables();

@@ -7,7 +7,14 @@ export default defineConfig([
 	js.configs.recommended,
 	...tseslint.configs.recommended,
 
-	globalIgnores(['node_modules/**', 'dist/**', '*.config.{js,ts}', 'src/vite-env.d.ts']),
+	globalIgnores([
+		'node_modules/**',
+		'dist/**',
+		'*.config.{js,ts}',
+		'src/vite-env.d.ts',
+		'playwright/**',
+		'vitest/**',
+	]),
 
 	// Base configuration
 	{

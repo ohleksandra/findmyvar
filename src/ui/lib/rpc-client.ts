@@ -22,10 +22,6 @@ interface PendingRequest<T = unknown> {
 
 type NotificationHandler<T extends RpcNotification> = (payload: RpcNotificationPayload<T>) => void;
 
-type NotificationHandlerRegistry = Partial<{
-	[K in RpcNotification]: Set<NotificationHandler<K>>;
-}>;
-
 interface RpcClientConfig {
 	defaultTimeout: number;
 }
@@ -36,7 +32,7 @@ const DEFAULT_CONFIG: RpcClientConfig = {
 
 class RpcClient {
 	private pending = new Map<string, PendingRequest>();
-	private notificationHandlers: NotificationHandlerRegistry = {};
+	private notificationHandlers = new Map<RpcNotification, Set<(payload: unknown) => void>>();
 	private initialized = false;
 	private handleMessage = this.onMessage.bind(this);
 	private config: RpcClientConfig;
@@ -119,15 +115,17 @@ class RpcClient {
 	}
 
 	on<T extends RpcNotification>(notification: T, handler: NotificationHandler<T>): () => void {
-		if (!this.notificationHandlers[notification]) {
-			this.notificationHandlers[notification] = new Set();
+		let handlers = this.notificationHandlers.get(notification);
+		if (!handlers) {
+			handlers = new Set();
+			this.notificationHandlers.set(notification, handlers);
 		}
 
-		const handlers = this.notificationHandlers[notification] as Set<NotificationHandler<T>>;
-		handlers.add(handler);
+		const typedHandlers = handlers as Set<NotificationHandler<T>>;
+		typedHandlers.add(handler);
 
 		return () => {
-			handlers.delete(handler);
+			typedHandlers.delete(handler);
 		};
 	}
 
@@ -184,7 +182,7 @@ class RpcClient {
 	}
 
 	private handleNotification(notification: RpcNotification, payload: unknown): void {
-		const handlers = this.notificationHandlers[notification];
+		const handlers = this.notificationHandlers.get(notification);
 		if (!handlers || handlers.size === 0) {
 			return;
 		}
