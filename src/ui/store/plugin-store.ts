@@ -27,7 +27,7 @@ interface PluginStore {
 	setSearchScope: (scope: SearchScope) => void;
 
 	// Helpers for internal use
-	_appendResults(results: VariableUsage[], isComplete: boolean): void;
+	_appendResults(results: VariableUsage[], isComplete: boolean, fromCache?: boolean): void;
 	_setProgress(progress: SearchProgress): void;
 	_setError(error: string): void;
 }
@@ -125,7 +125,7 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 		});
 	},
 
-	_appendResults: (results: VariableUsage[], isComplete: boolean) => {
+	_appendResults: (results: VariableUsage[], isComplete: boolean, fromCache = false) => {
 		const state = get();
 
 		if (results.length > 0) {
@@ -133,16 +133,13 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 		}
 
 		if (isComplete) {
-			const cached = state.progress?.currentPage === 'Cached';
 			const searchVariable = state.searchVariable;
 			if (searchVariable) {
 				set((prev) => {
-					const recent = [...prev.recentSearches];
-					if (!recent.find((v) => v.id === searchVariable.id)) {
-						const newLength = recent.unshift(searchVariable);
-						if (newLength > 3) {
-							recent.pop();
-						}
+					const recent = prev.recentSearches.filter((v) => v.id !== searchVariable.id);
+					recent.unshift(searchVariable);
+					if (recent.length > 3) {
+						recent.length = 3;
 					}
 					return { recentSearches: recent };
 				});
@@ -150,7 +147,7 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 			set({
 				isSearching: false,
 				isSearchCompleted: true,
-				cached,
+				cached: fromCache,
 			});
 		}
 	},
@@ -172,7 +169,7 @@ export function initSearchListeners(): () => void {
 	const state = usePluginStore.getState();
 
 	const unsubResults = rpcClient.on('variableSearch.results', (payload) => {
-		state._appendResults(payload.results, payload.isComplete);
+		state._appendResults(payload.results, payload.isComplete, payload.fromCache);
 	});
 
 	const unsubProgress = rpcClient.on('variableSearch.progress', (payload) => {

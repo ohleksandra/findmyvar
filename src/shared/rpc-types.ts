@@ -52,6 +52,7 @@ export interface RpcNotificationSchema {
 	'variableSearch.results': {
 		results: VariableUsage[];
 		isComplete: boolean;
+		fromCache?: boolean;
 	};
 	'variableSearch.progress': SearchProgress;
 	'variableSearch.error': { error: string };

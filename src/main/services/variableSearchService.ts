@@ -68,6 +68,13 @@ class VariableSearchService {
 			rpcServer.notify('variableSearch.results', {
 				results: cached.results,
 				isComplete: true,
+				fromCache: true,
+			});
+
+			rpcServer.notify('variableSearch.progress', {
+				processed: cached.results.length,
+				total: cached.results.length,
+				currentPage: 'Cached',
 			});
 
 			this.activeSearchId = null;
