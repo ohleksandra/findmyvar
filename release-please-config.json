@@ -8,7 +8,7 @@
 			"bump-patch-for-minor-pre-major": false,
 			"include-component-in-tag": false,
 			"include-commit-authors": false,
-			"release-as": "1.1.0",
+			"last-release-sha": "cedec83e0d4b4f7d1a39ac116168394f51345fab",
 			"bootstrap-sha": "cedec83e0d4b4f7d1a39ac116168394f51345fab",
 			"changelog-sections": [
 				{ "type": "feat", "section": "Features" },
