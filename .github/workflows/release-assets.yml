@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build and attach release assets
+    name: Build and attach plugin archive
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -38,17 +38,11 @@ jobs:
       - name: Package plugin
         run: npm run package
 
-      - name: Archive source code
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          git archive --format=zip --output="findmyvar-v${VERSION}-source.zip" HEAD
-
-      - name: Upload release assets
+      - name: Upload release asset
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
           gh release upload "${{ github.event.release.tag_name }}" \
             "findmyvar-v${VERSION}.zip" \
-            "findmyvar-v${VERSION}-source.zip" \
             --clobber
