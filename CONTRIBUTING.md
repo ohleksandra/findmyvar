@@ -79,7 +79,29 @@ For breaking changes, include either a `!` after the type/scope (e.g., `feat!:`)
 ## Documentation & Changelog
 
 - Update README, docs, and examples when behavior or APIs change.
-- Add an entry to CHANGELOG for user-impacting changes.
+- CHANGELOG.md is generated automatically by [release-please](https://github.com/googleapis/release-please) from conventional commits. You do not need to edit it manually.
+
+## Release process
+
+Releases are fully automated. The flow:
+
+1. Merge PRs to `main` using the conventional-commit conventions above. Commits with `feat:`, `fix:`, `perf:`, or `revert:` prefixes are "releasable"; `chore:`, `docs:`, `test:`, `refactor:`, `style:`, `build:`, `ci:` are not.
+2. On every push to `main`, the **Release Please** workflow (`.github/workflows/release-please.yml`) runs the release-please bot. If it detects releasable commits, it opens (or updates) a **Release PR** that:
+    - Bumps `version` in `package.json` (patch for `fix:`, minor for `feat:`, major for `feat!:` or `BREAKING CHANGE:`)
+    - Regenerates `CHANGELOG.md` from conventional commits grouped by type
+    - Updates `.release-please-manifest.json` to track the current version
+3. Review the Release PR. The PR title is the next version (e.g., `chore(main): release 1.2.0`). The body is the changelog. Edit the body if you want to call out a specific change.
+4. Merge the Release PR. release-please creates a GitHub release with the matching git tag.
+5. The **Publish to Figma** workflow (`.github/workflows/publish-figma.yml`) triggers on the `release: published` event, runs `npm run build`, then calls `npx plugma release` with the default `GITHUB_TOKEN` to publish the plugin.
+
+Versioning rules:
+
+- `fix:` → patch bump (1.0.0 → 1.0.1)
+- `feat:` → minor bump (1.0.0 → 1.1.0)
+- `feat!:` or a commit body containing `BREAKING CHANGE:` → major bump (1.0.0 → 2.0.0)
+- Pre-1.0.0, `feat:` still bumps minor; `bump-minor-pre-major: false` in `release-please-config.json` keeps patch bumps for fixes until 1.0.0.
+
+No manual tagging, no manual `npm version`, no manual CHANGELOG editing.
 
 ## Security Issues
 
