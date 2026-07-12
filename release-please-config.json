@@ -7,12 +7,11 @@
 			"bump-minor-pre-major": false,
 			"bump-patch-for-minor-pre-major": false,
 			"include-component-in-tag": false,
+			"include-commit-authors": false,
 			"bootstrap-sha": "cedec83e0d4b4f7d1a39ac116168394f51345fab",
 			"changelog-sections": [
 				{ "type": "feat", "section": "Features" },
-				{ "type": "fix", "section": "Bug Fixes" },
-				{ "type": "perf", "section": "Performance" },
-				{ "type": "revert", "section": "Reverts" }
+				{ "type": "fix", "section": "Bug Fixes" }
 			]
 		}
 	}
