@@ -1,7 +1,5 @@
 {
 	"$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
-	"bootstrap-sha": "cedec83e0d4b4f7d1a39ac116168394f51345fab",
-	"last-release-sha": "cedec83e0d4b4f7d1a39ac116168394f51345fab",
 	"packages": {
 		".": {
 			"changelog-path": "CHANGELOG.md",
@@ -10,6 +8,8 @@
 			"bump-patch-for-minor-pre-major": false,
 			"include-component-in-tag": false,
 			"include-commit-authors": false,
+			"last-release-sha": "cedec83e0d4b4f7d1a39ac116168394f51345fab",
+			"bootstrap-sha": "cedec83e0d4b4f7d1a39ac116168394f51345fab",
 			"changelog-sections": [
 				{ "type": "feat", "section": "Features" },
 				{ "type": "fix", "section": "Bug Fixes" }
