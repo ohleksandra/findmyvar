@@ -20,7 +20,7 @@
 			"npm run lint -- --fix",
 			"npm run format"
 		],
-		"*.{json,md,css,scss}": [
+		"*.{json,md,css,scss,yml,yaml}": [
 			"npm run format"
 		]
 	},
