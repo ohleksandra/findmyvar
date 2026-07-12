@@ -98,18 +98,35 @@ For breaking changes, include either a `!` after the type/scope (e.g., `feat!:`)
 
 ## Pull Requests, Titles & Automated Checks
 
-- PR titles and descriptions must follow the project's conventions. The repository runs an automated PR lint workflow that validates PR titles (Conventional Commits style) and requires a meaningful description.
+- PR titles and descriptions must follow the project's conventions. The CI workflow validates PR titles indirectly (via `commitlint` running on the head commit) and runs the full check suite on every PR.
 - Use clear, imperative titles (examples in the `Commit Messages` section apply). Include related issue references (e.g., `Closes #123`).
 - A PR template is available to guide authors — fill it in with motivation, change summary, and verification steps.
 
+### CI workflow
+
+The `CI` workflow (`.github/workflows/ci.yml`) runs on every PR and on every push to `main`. It executes the following checks in order:
+
+1. `npm ci --ignore-scripts` — clean install from lockfile
+2. `npm audit --omit=dev --audit-level=high` — production-dependency security audit (fails the build on high-severity CVEs)
+3. `npm audit --include=dev --audit-level=moderate` — dev-dependency audit (advisory only)
+4. `tsc --build` — type check for both main and UI projects
+5. `npm run format:check` — Prettier
+6. `npm run lint` — ESLint
+7. `vitest run` — unit tests
+8. `npm run build` — plugma production build
+
+All jobs run on `ubuntu-latest` with Node 20.
+
 ### Branch protection & required checks
 
-NOTE: At the moment this repository does not enforce branch protection or require status checks for merging. The CI workflows (PR lint, tests, lint/format) run on PRs and pushes, but GitHub will not block merges automatically.
+Recommended branch-protection settings for `main` (Settings → Branches → Branch protection rules):
 
-Recommended practice:
+- Require a pull request before merging
+- Require approvals: 1
+- Require status checks to pass before merging: select `CI / ci`
+- Do not allow bypassing the above settings
 
-- Treat the CI checks as required: ensure PR lint and local tests pass before requesting review.
-- If you are a maintainer, consider enabling branch protection in the repository settings to require specific status checks before merging.
+This project does not enforce branch protection by default; maintainers should enable it in repository settings.
 
 If a status check is failing, fix the issue and push a new commit. Maintainers may re-run CI or perform the necessary checks locally before merging.
 
@@ -119,7 +136,7 @@ Before opening a PR, please run the following locally to catch issues early:
 
 ```bash
 # install deps (only once)
-npm install
+npm ci
 
 # format & lint
 npm run format
@@ -127,6 +144,12 @@ npm run lint
 
 # run unit tests
 npm run vitest
+
+# type check
+npx tsc --build
+
+# build (optional, but matches CI)
+npm run build
 
 # run commit message check against last commit (example)
 npx --no-install commitlint --from HEAD~1 --to HEAD --verbose
@@ -142,10 +165,10 @@ git commit --amend
 
 ### Merging
 
-- Since branch protection is not enforced, maintainers may merge PRs after verifying that changes are safe. However, the preferred workflow is:
-    - Ensure CI (PR lint) passes and local tests/lint/format succeed.
-    - Obtain the required reviews.
-    - Merge using the repository's preferred strategy (squash or rebase+merge).
+- Ensure CI passes and local tests/lint/format/typecheck succeed.
+- Obtain the required reviews.
+- Merge using the repository's preferred strategy (squash or rebase+merge).
+- After merge, Dependabot will open weekly PRs for minor/patch updates; review and merge promptly to keep the dependency surface small.
 
 If your PR cannot run certain checks because it's from a fork, request a maintainer to run the workflow or open the PR from a branch in this repository.
 
