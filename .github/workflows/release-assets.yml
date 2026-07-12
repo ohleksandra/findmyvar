@@ -70,8 +70,8 @@ jobs:
             RANGE="HEAD"
           fi
 
-          AUTHORS=$(git log "$RANGE" --format='%an' | sort -u | awk '{print "- " $0}')
-          AUTHOR_MENTIONS=$(git log "$RANGE" --format='%an' | sort -u | paste -sd ', ' -)
+          AUTHORS=$(git log "$RANGE" --format='%an' | sort -u | grep -v '^github-actions\[bot\]$' | awk '{print "- " $0}')
+          AUTHOR_MENTIONS=$(git log "$RANGE" --format='%an' | sort -u | grep -v '^github-actions\[bot\]$' | tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g')
 
           COMMITS=$(git log "$RANGE" --format='- %s (%h)' | head -50)
 
