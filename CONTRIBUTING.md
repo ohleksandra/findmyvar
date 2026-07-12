@@ -92,12 +92,10 @@ Releases are fully automated. The flow:
     - Updates `.release-please-manifest.json` to track the current version
 3. Review the Release PR. The PR title is the next version (e.g., `chore(main): release 1.2.0`). The body is the changelog. Edit the body if you want to call out a specific change.
 4. Merge the Release PR. release-please creates a GitHub release with the matching git tag.
-5. **Publishing to Figma is a manual step.** Once a GitHub release is published:
-    - `npm run build` — produces `dist/`
-    - `npm run package` — zips `dist/` into `findmyvar-v<version>.zip` at the repo root
-    - Upload that zip to the Figma plugin marketplace
-
-    (A CI workflow for this is on the roadmap but needs a Personal Access Token to bypass branch protection.)
+5. **The Release Assets workflow runs automatically** on `release: published`. It builds, packages, and attaches two archives to the release:
+    - `findmyvar-v<version>.zip` — the built Figma plugin (from `npm run package`)
+    - `findmyvar-v<version>-source.zip` — the source tree at the release tag (via `git archive`)
+6. **Publishing to Figma is a manual step.** Download `findmyvar-v<version>.zip` from the GitHub release and upload it to the Figma plugin marketplace. (Automating this upload via `npx plugma release` is on the roadmap but needs a Personal Access Token to bypass branch protection.)
 
 Versioning rules:
 

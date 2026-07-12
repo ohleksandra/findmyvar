@@ -1,0 +1,54 @@
+name: Release Assets
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-assets-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and attach release assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build plugin
+        run: npm run build
+
+      - name: Package plugin
+        run: npm run package
+
+      - name: Archive source code
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          git archive --format=zip --output="findmyvar-v${VERSION}-source.zip" HEAD
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          gh release upload "${{ github.event.release.tag_name }}" \
+            "findmyvar-v${VERSION}.zip" \
+            "findmyvar-v${VERSION}-source.zip" \
+            --clobber

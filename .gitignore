@@ -51,6 +51,7 @@ coverage/
 dist-ssr
 dist
 findmyvar-v*.zip
+findmyvar-v*-source.zip
 
 # TypeScript build info
 *.tsbuildinfo
