@@ -1,5 +1,7 @@
 # FindMyVar
 
+[![CI](https://github.com/ohleksandra/findmyvar/actions/workflows/ci.yml/badge.svg)](https://github.com/ohleksandra/findmyvar/actions/workflows/ci.yml)
+
 FindMyVar is a Figma plugin that helps designers and developers locate where design variables (colors, typography, numeric values, booleans, and strings) are used across a Figma file. It provides a responsive, incremental search UI and direct navigation to matching nodes.
 
 ---
