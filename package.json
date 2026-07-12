@@ -30,7 +30,7 @@
 		"@figma/plugin-typings": "^1.100.2",
 		"@types/react": "^18.3.12",
 		"@types/react-dom": "^18.3.1",
-		"@vitejs/plugin-react": "^4.3.3",
+		"@vitejs/plugin-react": "^6.0.3",
 		"globals": "^15.11.0",
 		"husky": "^9.1.7",
 		"lint-staged": "^16.2.7",
