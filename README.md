@@ -1,112 +1,42 @@
 # FindMyVar
 
 [![CI](https://github.com/ohleksandra/findmyvar/actions/workflows/ci.yml/badge.svg)](https://github.com/ohleksandra/findmyvar/actions/workflows/ci.yml)
+[![Figma Community](https://img.shields.io/badge/Figma-Install-blue?logo=figma&logoColor=white)](https://www.figma.com/community/plugin/1608643867941472937/findmyvar)
+[![Version](https://img.shields.io/github/v/release/ohleksandra/findmyvar?label=version&sort=semver)](https://github.com/ohleksandra/findmyvar/releases)
+[![License](https://img.shields.io/github/license/ohleksandra/findmyvar)](LICENSE)
 
-FindMyVar is a Figma plugin that helps designers and developers locate where design variables (colors, typography, numeric values, booleans, and strings) are used across a Figma file. It provides a responsive, incremental search UI and direct navigation to matching nodes.
+![FindMyVar preview](docs/preview.png)
 
----
+Stop hunting for variable usage manually.
 
-## Overview
+Findmyvar lets you search for any variable by name and instantly see every place it's used across your entire design file, current page, or just your current selection.
 
-FindMyVar searches a Figma document for variable usages and surfaces results with navigation and progress updates.
+## What it does
 
-## Key features
+- Search any variable by name
+- See results grouped by page, with the full node path so you know exactly where each usage lives
+- See which property the variable is bound to (Fill, Outline, Gradient, Solid, and more)
+- Navigate directly to that node and highlight it on the canvas
+- Scope your search to all pages, current page, or selection
 
-- Search variable usages across All pages, Current page, or Selection
-- Real-time progress updates and incremental results
-- Click results to navigate to matching nodes
-- Caching for faster repeated searches
-- Supports variable types: BOOLEAN, FLOAT, STRING, COLOR
+## Who it's for
 
-## Install / Try in Figma
+Whether you're a product designer auditing your work, or a design system maintainer tracking token usage across a large file, Findmyvar gives you the visibility you need.
 
-1. Build or run the development bundle (this generates `dist/`):
+## Why it matters
 
-```bash
-npm install
-npm run dev    # development (live reload)
-# or
-npm run build   # production bundle
-```
-
-2. In the Figma desktop app:
-    - Open a file.
-    - Press `Cmd/Ctrl + K` and search for **Import plugin from manifest...**
-    - Select `dist/manifest.json`.
-
-3. Run the plugin from the Actions menu.
-
-## Quick usage
-
-- Open the plugin and type a variable name or partial term.
-- Select the search scope (All pages / Current page / Selection).
-- Click a result to navigate to the node in the document.
+Figma doesn't give you a native way to find where a specific variable is used. Findmyvar fills that gap, making variable audits, refactoring, and design system hygiene significantly faster.
 
 ---
 
-# Development
+> Note: Search results may take a moment on very large files, this is expected behavior.
 
-## Requirements
+## Install
 
-- Node.js (recommended LTS)
-- Figma desktop app (for local testing)
+1. Open the [FindMyVar page on Figma Community](https://www.figma.com/community/plugin/1608643867941472937/findmyvar).
+2. Click **Install**.
+3. Run the plugin from the **Actions** menu in any Figma file.
 
-## Development & build
+## License
 
-- Start dev server (Plugma):
-
-```bash
-npm run dev
-```
-
-- Build production bundle:
-
-```bash
-npm run build
-```
-
-- Create a release:
-
-```bash
-npm run release
-```
-
-## Scripts
-
-- `npm run dev` — development server with live rebuilds
-- `npm run build` — production build
-- `npm run release` — release packaging
-- `npm run format` — format code (Prettier)
-- `npm run lint` — lint code (ESLint)
-- `npm run vitest` — unit tests (Vitest)
-- `npm run playwright` — E2E tests (Playwright)
-
-## Testing
-
-- Unit tests: `npm run vitest`
-- E2E tests: `npm run playwright`
-
-## Formatting & pre-commit checks
-
-- Format: `npm run format` (Prettier)
-- Lint: `npm run lint` (ESLint)
-- Pre-commit hooks: Husky + lint-staged are configured. Ensure the `prepare` script is present in `package.json` and run `npm install` to enable hooks locally.
-
-## Contributing & commit rules
-
-See `CONTRIBUTING.md` for contribution guidelines, Conventional Commits rules, and examples. The repository enforces commit messages via `commitlint` and Husky hooks.
-
-## Architecture
-
-The plugin is split into two processes:
-
-- Main process (`src/main/`) — runs in Figma's main thread and contains RPC handlers and the variable search service.
-- UI process (`src/ui/`) — React UI running in an iframe; communicates with main via the RPC client.
-
-Shared types and RPC contracts live in `src/shared/`.
-
-## License & contact
-
-See `LICENSE`. Open issues or PRs on this repository for questions or contributions.
-
----
+[MIT](LICENSE)
