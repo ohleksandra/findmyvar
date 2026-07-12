@@ -22,6 +22,8 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -54,6 +56,9 @@ jobs:
           set -euo pipefail
           CURRENT_TAG="${{ github.event.release.tag_name }}"
           REPO="${{ github.repository }}"
+
+          # Make sure all remote tags are available so we can find the previous one.
+          git fetch --tags --depth=1 origin "+refs/tags/*:refs/tags/*" 2>/dev/null || true
 
           # Find the previous tag (the one right before CURRENT_TAG, by semver order).
           PREVIOUS_TAG=$(git tag --sort=-version:refname \
