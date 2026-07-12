@@ -1,9 +1,15 @@
 {
 	"compilerOptions": {
 		"composite": true,
+		"rootDir": "../..",
+		"lib": ["ES2022", "DOM"],
 		"module": "ESNext",
 		"moduleResolution": "bundler",
-		"typeRoots": ["../../node_modules/@figma", "../../node_modules/@types"]
+		"skipLibCheck": true,
+		"outDir": "../../node_modules/.tmp/main",
+		"tsBuildInfoFile": "../../node_modules/.tmp/main.tsbuildinfo",
+		"typeRoots": ["../../node_modules"],
+		"types": ["@figma/plugin-typings"]
 	},
 	"include": ["**/*.ts", "../vite-env.d.ts", "../types/**/*.ts", "../shared/**/*.ts"]
 }

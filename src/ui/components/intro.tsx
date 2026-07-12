@@ -1,4 +1,3 @@
-import React from 'react';
 import LogoInverted from './icons/logo-inverted';
 import { ArrowUpRight, Search } from 'lucide-react';
 

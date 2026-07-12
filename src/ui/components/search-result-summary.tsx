@@ -23,7 +23,7 @@ const SearchResultSummary = ({ variable, resultCount, pagesCount }: Props) => {
 				</span>
 			</Badge>
 			<p className="font-sans text-sm">
-				was found in <b>{resultCount}</b> instances accross <b>{pagesCount}</b> pages.
+				was found in <b>{resultCount}</b> instances across <b>{pagesCount}</b> pages.
 			</p>
 		</div>
 	);

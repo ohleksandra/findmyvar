@@ -107,6 +107,7 @@ For breaking changes, include either a `!` after the type/scope (e.g., `feat!:`)
 NOTE: At the moment this repository does not enforce branch protection or require status checks for merging. The CI workflows (PR lint, tests, lint/format) run on PRs and pushes, but GitHub will not block merges automatically.
 
 Recommended practice:
+
 - Treat the CI checks as required: ensure PR lint and local tests pass before requesting review.
 - If you are a maintainer, consider enabling branch protection in the repository settings to require specific status checks before merging.
 
@@ -142,9 +143,9 @@ git commit --amend
 ### Merging
 
 - Since branch protection is not enforced, maintainers may merge PRs after verifying that changes are safe. However, the preferred workflow is:
-	- Ensure CI (PR lint) passes and local tests/lint/format succeed.
-	- Obtain the required reviews.
-	- Merge using the repository's preferred strategy (squash or rebase+merge).
+    - Ensure CI (PR lint) passes and local tests/lint/format succeed.
+    - Obtain the required reviews.
+    - Merge using the repository's preferred strategy (squash or rebase+merge).
 
 If your PR cannot run certain checks because it's from a fork, request a maintainer to run the workflow or open the PR from a branch in this repository.
 

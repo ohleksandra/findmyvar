@@ -8,7 +8,7 @@ export async function getVariablesHandler(): Promise<RpcResponse<'get-variables'
 		name: variable.name,
 		resolvedType: variable.resolvedType,
 		variableCollectionId: variable.variableCollectionId,
-		hiddenFromPubslishing: variable.hiddenFromPublishing,
+		hiddenFromPublishing: variable.hiddenFromPublishing,
 		remote: variable.remote,
 	}));
 
