@@ -57,10 +57,8 @@ jobs:
           CURRENT_TAG="${{ github.event.release.tag_name }}"
           REPO="${{ github.repository }}"
 
-          # Make sure all remote tags are available so we can find the previous one.
-          git fetch --tags --depth=1 origin "+refs/tags/*:refs/tags/*" 2>/dev/null || true
-
           # Find the previous tag (the one right before CURRENT_TAG, by semver order).
+          # fetch-tags: true on the checkout already brought all tags into the repo.
           PREVIOUS_TAG=$(git tag --sort=-version:refname \
             | awk -v current="$CURRENT_TAG" '$0 == current {found=1; next} found {print; exit}')
 
