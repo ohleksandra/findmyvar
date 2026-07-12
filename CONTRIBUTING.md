@@ -92,7 +92,12 @@ Releases are fully automated. The flow:
     - Updates `.release-please-manifest.json` to track the current version
 3. Review the Release PR. The PR title is the next version (e.g., `chore(main): release 1.2.0`). The body is the changelog. Edit the body if you want to call out a specific change.
 4. Merge the Release PR. release-please creates a GitHub release with the matching git tag.
-5. **Publishing to Figma is not automated yet.** Once a GitHub release is published, run `npm run release` locally to push the plugin to the Figma marketplace. (A CI workflow for this is on the roadmap but needs a Personal Access Token to bypass branch protection.)
+5. **Publishing to Figma is a manual step.** Once a GitHub release is published:
+    - `npm run build` — produces `dist/`
+    - `npm run package` — zips `dist/` into `findmyvar-v<version>.zip` at the repo root
+    - Upload that zip to the Figma plugin marketplace
+
+    (A CI workflow for this is on the roadmap but needs a Personal Access Token to bypass branch protection.)
 
 Versioning rules:
 

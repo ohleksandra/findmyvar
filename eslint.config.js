@@ -14,6 +14,7 @@ export default defineConfig([
 		'src/vite-env.d.ts',
 		'playwright/**',
 		'vitest/**',
+		'scripts/**',
 	]),
 
 	// Base configuration

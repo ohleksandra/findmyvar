@@ -8,6 +8,7 @@
 	"scripts": {
 		"dev": "plugma dev",
 		"build": "plugma build",
+		"package": "node scripts/package.mjs",
 		"release": "plugma release",
 		"prepare": "husky",
 		"format": "prettier --write .",
