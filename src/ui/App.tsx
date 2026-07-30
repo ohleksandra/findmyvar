@@ -1,16 +1,16 @@
 import { useEffect } from 'react';
-import { usePluginStore, initSearchListeners } from './store/plugin-store';
+import { usePlugin } from '@/context/plugin-context';
 import Header from './components/header';
 import SearchPane from './components/search-pane';
 
 const App = () => {
-	const fetchVariables = usePluginStore((state) => state.getAllVariables);
+	const {
+		actions: { getAllVariables },
+	} = usePlugin();
 
 	useEffect(() => {
-		fetchVariables();
-		const cleanup = initSearchListeners();
-		return cleanup;
-	}, [fetchVariables]);
+		getAllVariables();
+	}, [getAllVariables]);
 
 	return (
 		<div className="grid grid-rows-[auto_1fr] h-full overflow-hidden">

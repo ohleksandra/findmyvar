@@ -1,7 +1,6 @@
-import { usePluginStore } from '@/store/plugin-store';
+import { usePlugin } from '@/context/plugin-context';
 import { searchVariables } from '@/lib/search';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 import {
 	Command,
 	CommandEmpty,
@@ -15,15 +14,9 @@ import { cn } from '@/lib/utils';
 import { CommandSeparator } from 'cmdk';
 
 const SearchControl = () => {
-	const { variables, setSearchQuery, searchQuery, startSearch, scope } = usePluginStore(
-		useShallow((state) => ({
-			variables: state.variables,
-			setSearchQuery: state.setSearchQuery,
-			searchQuery: state.searchQuery,
-			startSearch: state.startSearch,
-			scope: state.scope,
-		})),
-	);
+	const { state, actions } = usePlugin();
+	const { variables, searchQuery, scope } = state;
+	const { setSearchQuery, startSearch } = actions;
 
 	const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
 

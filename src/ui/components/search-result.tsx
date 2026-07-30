@@ -1,5 +1,4 @@
-import { usePluginStore } from '@/store/plugin-store';
-import { useShallow } from 'zustand/react/shallow';
+import { usePlugin } from '@/context/plugin-context';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Badge } from './ui/badge';
 import { useMemo } from 'react';
@@ -7,13 +6,8 @@ import SearchResultSummary from './search-result-summary';
 import VariableUsage from './variable-usage';
 
 const SearchResult = () => {
-	const { searchResults, searchVariable, isSearchCompleted } = usePluginStore(
-		useShallow((state) => ({
-			searchResults: state.searchResults,
-			searchVariable: state.searchVariable,
-			isSearchCompleted: state.isSearchCompleted,
-		})),
-	);
+	const { state } = usePlugin();
+	const { searchResults, searchVariable, isSearchCompleted } = state;
 
 	const pagesCount = useMemo(() => {
 		const uniquePages = new Set(searchResults.map((result) => result.pageName));

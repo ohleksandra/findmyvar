@@ -21,49 +21,31 @@ type NodeIconProps = {
 	type: SceneNode['type'];
 } & React.HTMLAttributes<SVGElement>;
 
+const NODE_ICON_MAP: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
+	BOOLEAN_OPERATION: BooleanOperationIcon,
+	COMPONENT: ComponentIcon,
+	COMPONENT_SET: ComponentSetIcon,
+	INSTANCE: InstanceIcon,
+	GROUP: GroupNodeIcon,
+	FRAME: FrameIcon,
+	VECTOR: VectorIcon,
+	RECTANGLE: RectangleIcon,
+	LINE: LineIcon,
+	ELLIPSE: EllipseIcon,
+	POLYGON: PolygonIcon,
+	STAR: StarIcon,
+	TRANSFORM_GROUP: TransformGroupIcon,
+	TEXT: TextIcon,
+	TEXT_PATH: TextIcon,
+	SHAPE_WITH_TEXT: TextIcon,
+	SECTION: SectionIcon,
+	SLICE: SliceIcon,
+	MEDIA: MediaNodeIcon,
+};
+
 const NodeIcon = ({ type, ...props }: NodeIconProps) => {
-	switch (type) {
-		case 'BOOLEAN_OPERATION':
-			return <BooleanOperationIcon {...props} />;
-		case 'COMPONENT':
-			return <ComponentIcon {...props} />;
-		case 'COMPONENT_SET':
-			return <ComponentSetIcon {...props} />;
-		case 'INSTANCE':
-			return <InstanceIcon {...props} />;
-		case 'GROUP':
-			return <GroupNodeIcon {...props} />;
-		case 'FRAME':
-			return <FrameIcon {...props} />;
-		case 'VECTOR':
-			return <VectorIcon {...props} />;
-		case 'RECTANGLE':
-			return <RectangleIcon {...props} />;
-		case 'LINE':
-			return <LineIcon {...props} />;
-		case 'ELLIPSE':
-			return <EllipseIcon {...props} />;
-		case 'POLYGON':
-			return <PolygonIcon {...props} />;
-		case 'STAR':
-			return <StarIcon {...props} />;
-		case 'TRANSFORM_GROUP':
-			return <TransformGroupIcon {...props} />;
-		case 'TEXT':
-			return <TextIcon {...props} />;
-		case 'TEXT_PATH':
-			return <TextIcon {...props} />;
-		case 'SHAPE_WITH_TEXT':
-			return <TextIcon {...props} />;
-		case 'SECTION':
-			return <SectionIcon {...props} />;
-		case 'SLICE':
-			return <SliceIcon {...props} />;
-		case 'MEDIA':
-			return <MediaNodeIcon {...props} />;
-		default:
-			return <DefaultIcon {...props} />;
-	}
+	const Icon = NODE_ICON_MAP[type] ?? DefaultIcon;
+	return <Icon {...props} />;
 };
 
 export default NodeIcon;

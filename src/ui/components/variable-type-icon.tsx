@@ -9,19 +9,17 @@ type VariableTypeIcon = {
 	type: Variable['resolvedType'];
 } & React.HTMLAttributes<SVGElement>;
 
+const VARIABLE_TYPE_ICON_MAP: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
+	BOOLEAN: BooleanIcon,
+	FLOAT: NumericIcon,
+	STRING: TextIcon,
+	COLOR: ColorIcon,
+};
+
 const VariableTypeIcon = (props: VariableTypeIcon) => {
-	switch (props.type) {
-		case 'BOOLEAN':
-			return <BooleanIcon {...props} />;
-		case 'FLOAT':
-			return <NumericIcon {...props} />;
-		case 'STRING':
-			return <TextIcon {...props} />;
-		case 'COLOR':
-			return <ColorIcon {...props} />;
-		default:
-			return null;
-	}
+	const Icon = VARIABLE_TYPE_ICON_MAP[props.type];
+	if (!Icon) return null;
+	return <Icon {...props} />;
 };
 
 export default VariableTypeIcon;

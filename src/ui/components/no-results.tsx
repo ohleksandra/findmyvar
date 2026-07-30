@@ -1,21 +1,11 @@
-import { usePluginStore } from '@/store/plugin-store';
-import { useShallow } from 'zustand/react/shallow';
+import { usePlugin } from '@/context/plugin-context';
 import { Badge } from './ui/badge';
-import { useMemo } from 'react';
 
 const NoResults = () => {
-	const { searchQuery } = usePluginStore(
-		useShallow((state) => ({
-			searchQuery: state.searchQuery,
-		})),
-	);
+	const { state } = usePlugin();
+	const { searchQuery } = state;
 
-	const displayQuery = useMemo(() => {
-		if (!searchQuery || searchQuery.length === 0) {
-			return '';
-		}
-		return searchQuery;
-	}, []);
+	const displayQuery = searchQuery || '';
 
 	return (
 		<div className="flex flex-col w-full h-full justify-center items-center">

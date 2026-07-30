@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 import App from './App';
 import { rpcClient } from './lib/rpc-client';
+import { PluginProvider } from './components/plugin-provider';
 
 rpcClient.init();
 
@@ -12,6 +13,8 @@ window.addEventListener('beforeunload', () => {
 
 createRoot(document.getElementById('app')!).render(
 	<StrictMode>
-		<App />
+		<PluginProvider>
+			<App />
+		</PluginProvider>
 	</StrictMode>,
 );

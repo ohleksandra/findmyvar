@@ -1,6 +1,6 @@
 import type { SearchScope, Variable, VariableUsage } from '../../shared/rpc-types';
 import { create } from 'zustand';
-import { callPlugin, rpcClient } from '@/lib/rpc-client';
+import { callPlugin } from '@/lib/rpc-client';
 import type { SearchProgress } from '../../shared/rpc-types';
 
 interface PluginStore {
@@ -164,25 +164,3 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 		set({ isSearching: false, error });
 	},
 }));
-
-export function initSearchListeners(): () => void {
-	const state = usePluginStore.getState();
-
-	const unsubResults = rpcClient.on('variableSearch.results', (payload) => {
-		state._appendResults(payload.results, payload.isComplete, payload.fromCache);
-	});
-
-	const unsubProgress = rpcClient.on('variableSearch.progress', (payload) => {
-		state._setProgress(payload);
-	});
-
-	const unsubError = rpcClient.on('variableSearch.error', (payload) => {
-		state._setError(payload.error);
-	});
-
-	return () => {
-		unsubResults();
-		unsubProgress();
-		unsubError();
-	};
-}
