@@ -2,9 +2,12 @@ import { registerVariableSearchHandlers } from './handlers/variable-search-handl
 import { getVariablesHandler } from './handlers/get-variables';
 import { logger } from './lib/logger';
 import { rpcServer } from './lib/rpc-server';
+import { variableSearchService } from './services/variableSearchService';
 
 export default function () {
 	figma.showUI(__html__, { width: 538, height: 800, themeColors: true });
+
+	variableSearchService.init();
 
 	logger.log('[Plugin] Initialized');
 

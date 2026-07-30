@@ -20,6 +20,7 @@ export interface SearchProgress {
 	processed: number;
 	total: number;
 	currentPage: string;
+	nodesProcessed?: number;
 }
 
 export type SearchScope = 'all-pages' | 'current-page' | 'selection';

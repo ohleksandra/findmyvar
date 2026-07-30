@@ -18,7 +18,9 @@ interface SearchTarget {
 
 const CACHE_TTL = 5 * 60 * 1000;
 const RESULTS_BATCH_SIZE = 50;
-const NODE_THRESHOLD_FOR_RECURSION = 100;
+const NODES_PER_YIELD = 200;
+const NODES_PER_PROGRESS = 500;
+const MAX_CACHE_ENTRIES = 20;
 
 class VariableSearchService {
 	private cache: Map<string, CacheEntry> = new Map();
@@ -26,8 +28,10 @@ class VariableSearchService {
 	private activeSearchId: string | null = null;
 	private isInitialized: boolean = false;
 
-	init(): void {
+	async init(): Promise<void> {
 		if (this.isInitialized) return;
+
+		await figma.loadAllPagesAsync();
 
 		figma.on('documentchange', (event: DocumentChangeEvent) => {
 			this.handleDocumentChange(event);
@@ -65,16 +69,13 @@ class VariableSearchService {
 				`[VariableSearch] Cache hit: ${cached.results.length} results (${formatDuration(Date.now() - startTime)})`,
 			);
 
-			rpcServer.notify('variableSearch.results', {
-				results: cached.results,
-				isComplete: true,
-				fromCache: true,
-			});
+			await this.streamCachedResults(cached.results);
 
 			rpcServer.notify('variableSearch.progress', {
 				processed: cached.results.length,
 				total: cached.results.length,
 				currentPage: 'Cached',
+				nodesProcessed: cached.results.length,
 			});
 
 			this.activeSearchId = null;
@@ -91,6 +92,7 @@ class VariableSearchService {
 				processed: 0,
 				total: 0,
 				currentPage: 'No selection',
+				nodesProcessed: 0,
 			});
 
 			this.activeSearchId = null;
@@ -109,7 +111,9 @@ class VariableSearchService {
 			const totalTopLevelNodes = targets.reduce((sum, t) => sum + t.topLevelNodes.length, 0);
 
 			let processedTopLevelNodes = 0;
+			let nodesProcessed = 0;
 			let pendingResults: VariableUsage[] = [];
+			const pathCache = new Map<string, string>();
 
 			for (const { page, topLevelNodes } of targets) {
 				if (!this.isActiveSearch(searchId)) {
@@ -126,10 +130,14 @@ class VariableSearchService {
 						return;
 					}
 
-					const nodes = await this.findNodesWithBindingsChunked(topNode, signal);
-					processedTopLevelNodes++;
+					const generator = this.findNodesWithBindingsAsync(topNode, signal);
 
-					for (const node of nodes) {
+					for await (const node of generator) {
+						if (!this.isActiveSearch(searchId)) {
+							signal.cancelled = true;
+							return;
+						}
+
 						const fields = this.getVariableBindings(node, variableId);
 
 						if (fields) {
@@ -141,29 +149,41 @@ class VariableSearchService {
 									field: field.replace('[0]', ''),
 									pageName,
 									pageId,
-									nodePath: this.buildNodePath(node),
+									nodePath: this.buildNodePath(node, pathCache),
 								};
 								allResults.push(usage);
 								pendingResults.push(usage);
 							}
 						}
+
+						if (pendingResults.length >= RESULTS_BATCH_SIZE) {
+							rpcServer.notify('variableSearch.results', {
+								results: pendingResults,
+								isComplete: false,
+							});
+							pendingResults = [];
+						}
+
+						nodesProcessed++;
+
+						if (nodesProcessed % NODES_PER_PROGRESS === 0) {
+							rpcServer.notify('variableSearch.progress', {
+								processed: processedTopLevelNodes,
+								total: totalTopLevelNodes,
+								currentPage: pageName,
+								nodesProcessed,
+							});
+						}
 					}
 
-					if (pendingResults.length >= RESULTS_BATCH_SIZE) {
-						rpcServer.notify('variableSearch.results', {
-							results: pendingResults,
-							isComplete: false,
-						});
-						pendingResults = [];
-					}
+					processedTopLevelNodes++;
 
 					rpcServer.notify('variableSearch.progress', {
 						processed: processedTopLevelNodes,
 						total: totalTopLevelNodes,
 						currentPage: pageName,
+						nodesProcessed,
 					});
-
-					await this.yieldToMain();
 				}
 			}
 
@@ -183,9 +203,10 @@ class VariableSearchService {
 				processed: totalTopLevelNodes,
 				total: totalTopLevelNodes,
 				currentPage: 'Complete',
+				nodesProcessed,
 			});
 
-			this.cache.set(cacheKey, {
+			this.addToCache(cacheKey, {
 				variableId,
 				scope,
 				results: allResults,
@@ -216,40 +237,72 @@ class VariableSearchService {
 		return 'boundVariables' in node && node.boundVariables !== null;
 	};
 
-	private findNodesWithBindingsSync(node: SceneNode): SceneNode[] {
-		if ('findAll' in node && typeof node.findAll === 'function') {
-			return node.findAll(this.hasBoundVariables) as SceneNode[];
-		}
-		return this.hasBoundVariables(node) ? [node] : [];
-	}
-
-	private async findNodesWithBindingsChunked(
+	private async *findNodesWithBindingsAsync(
 		node: SceneNode,
 		signal: { cancelled: boolean },
-	): Promise<SceneNode[]> {
-		if (signal.cancelled) return [];
+	): AsyncGenerator<SceneNode, void, void> {
+		let nodesVisited = 0;
 
-		if ('children' in node && node.children.length > NODE_THRESHOLD_FOR_RECURSION) {
-			const results: SceneNode[] = [];
+		const traverse = async function* (
+			currentNode: SceneNode,
+			service: VariableSearchService,
+		): AsyncGenerator<SceneNode, void, void> {
+			if (signal.cancelled) return;
 
-			if (this.hasBoundVariables(node)) {
-				results.push(node);
+			if (service.hasBoundVariables(currentNode)) {
+				yield currentNode;
 			}
 
-			for (const child of node.children) {
-				if (signal.cancelled) break;
-				const childResults = await this.findNodesWithBindingsChunked(
-					child as SceneNode,
-					signal,
-				);
-				results.push(...childResults);
+			if ('children' in currentNode) {
+				for (const child of currentNode.children) {
+					if (signal.cancelled) return;
+
+					nodesVisited++;
+					if (nodesVisited % NODES_PER_YIELD === 0) {
+						await service.yieldToMain();
+					}
+
+					yield* traverse(child as SceneNode, service);
+				}
+			}
+		};
+
+		yield* traverse(node, this);
+	}
+
+	private async streamCachedResults(results: VariableUsage[]): Promise<void> {
+		for (let i = 0; i < results.length; i += RESULTS_BATCH_SIZE) {
+			const batch = results.slice(i, i + RESULTS_BATCH_SIZE);
+			const isLast = i + RESULTS_BATCH_SIZE >= results.length;
+
+			rpcServer.notify('variableSearch.results', {
+				results: batch,
+				isComplete: isLast,
+				fromCache: true,
+			});
+
+			if (!isLast) {
 				await this.yieldToMain();
 			}
-
-			return results;
 		}
 
-		return this.findNodesWithBindingsSync(node);
+		if (results.length === 0) {
+			rpcServer.notify('variableSearch.results', {
+				results: [],
+				isComplete: true,
+				fromCache: true,
+			});
+		}
+	}
+
+	private addToCache(key: string, entry: CacheEntry): void {
+		if (this.cache.size >= MAX_CACHE_ENTRIES) {
+			const oldestKey = this.cache.keys().next().value;
+			if (oldestKey !== undefined) {
+				this.cache.delete(oldestKey);
+			}
+		}
+		this.cache.set(key, entry);
 	}
 
 	private handleDocumentChange(event: DocumentChangeEvent): void {
@@ -345,10 +398,17 @@ class VariableSearchService {
 		return `${variableId}:${scope}`;
 	}
 
-	private buildNodePath(node: SceneNode): string {
+	private buildNodePath(node: SceneNode, pathCache?: Map<string, string>): string {
 		const parent = node.parent;
 		if (!parent) {
 			return '';
+		}
+
+		if (pathCache) {
+			const cached = pathCache.get(parent.id);
+			if (cached !== undefined) {
+				return cached;
+			}
 		}
 
 		const path: BaseNode[] = [];
@@ -360,7 +420,11 @@ class VariableSearchService {
 		}
 
 		if (path.length < 2) {
-			return path[0]?.name?.trim() || '';
+			const result = path[0]?.name?.trim() || '';
+			if (pathCache) {
+				pathCache.set(parent.id, result);
+			}
+			return result;
 		}
 
 		let highestName = '';
@@ -375,17 +439,23 @@ class VariableSearchService {
 		const parentName = path[path.length - 1].name?.trim() || '';
 
 		if (!highestName || !parentName) {
+			if (pathCache) {
+				pathCache.set(parent.id, '');
+			}
 			return '';
 		}
 
-		return `${highestName}/.../${parentName}`;
+		const result = `${highestName}/.../${parentName}`;
+		if (pathCache) {
+			pathCache.set(parent.id, result);
+		}
+		return result;
 	}
 
 	private async getSearchTargets(scope: SearchScope): Promise<SearchTarget[]> {
-		await figma.loadAllPagesAsync();
-
 		switch (scope) {
 			case 'all-pages':
+				await figma.loadAllPagesAsync();
 				return figma.root.children.map((page) => ({
 					page,
 					topLevelNodes: page.children as SceneNode[],
