@@ -1,19 +1,13 @@
-import { usePluginStore } from '@/store/plugin-store';
-import { useShallow } from 'zustand/react/shallow';
+import { usePlugin } from '@/context/plugin-context';
 import { Spinner } from './ui/spinner';
 import { Button } from './ui/button';
 import { useMemo } from 'react';
 import { Progress } from './ui/progress';
 
 const ProgressPane = () => {
-	const { searchQuery, progress, cancelSearch, isSearching } = usePluginStore(
-		useShallow((state) => ({
-			searchQuery: state.searchQuery,
-			progress: state.progress,
-			cancelSearch: state.cancelSearch,
-			isSearching: state.isSearching,
-		})),
-	);
+	const { state, actions } = usePlugin();
+	const { searchQuery, progress, isSearching } = state;
+	const { cancelSearch } = actions;
 
 	const searchProgress = useMemo(() => {
 		if (!progress) return 0;

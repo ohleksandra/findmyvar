@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import type { VariableUsage as VariableUsageData } from '../../shared/rpc-types';
-import { usePluginStore } from '@/store/plugin-store';
+import { usePlugin } from '@/context/plugin-context';
 import { ArrowUpRight } from 'lucide-react';
 import { useState } from 'react';
 import NodeIcon from './node-icon';
@@ -10,7 +10,9 @@ type VariableUsageProps = {
 };
 
 const VariableUsage = ({ variable }: VariableUsageProps) => {
-	const navigateToResult = usePluginStore((state) => state.navigateToResult);
+	const {
+		actions: { navigateToResult },
+	} = usePlugin();
 
 	const [isHovered, setIsHovered] = useState(false);
 
