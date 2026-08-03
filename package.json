@@ -35,7 +35,7 @@
 		"@vitejs/plugin-react": "^4.3.3",
 		"globals": "^17.8.0",
 		"husky": "^9.1.7",
-		"lint-staged": "^16.2.7",
+		"lint-staged": "^17.3.0",
 		"plugma": "^2.2.4",
 		"shadcn-ui": "^0.9.5",
 		"tslib": "^2.8.0",
