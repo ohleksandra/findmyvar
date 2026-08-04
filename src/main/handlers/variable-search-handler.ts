@@ -1,12 +1,10 @@
-import { nanoid } from 'nanoid';
 import { rpcServer } from '../lib/rpc-server';
 import { variableSearchService } from '../services/variableSearchService';
 
 export function registerVariableSearchHandlers(): void {
 	rpcServer.registerHandler('variableSearch.start', (payload) => {
-		const searchId = nanoid();
-		void variableSearchService.search(payload.variableId, payload.scope, searchId);
-		return { started: true, searchId };
+		void variableSearchService.search(payload.variableId, payload.scope, payload.searchId);
+		return { started: true };
 	});
 
 	rpcServer.registerHandler('variableSearch.cancel', async () => {

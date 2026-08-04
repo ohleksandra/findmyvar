@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { callPlugin } from '@/lib/rpc-client';
 import type { SearchProgress } from '../../shared/rpc-types';
+import { nanoid } from 'nanoid';
 
 interface PluginStore {
 	variables: Variable[];
@@ -74,6 +75,7 @@ export const usePluginStore = create<PluginStore>()(
 
 			startSearch: async (variable: Variable, scope?: SearchScope) => {
 				const currentScope = scope ?? get().scope;
+				const searchId = nanoid();
 
 				set({
 					isSearching: true,
@@ -82,16 +84,17 @@ export const usePluginStore = create<PluginStore>()(
 					error: null,
 					progress: null,
 					cached: false,
+					activeSearchId: searchId,
 				});
 
 				get().clearSearchResults();
 
 				try {
-					const { searchId } = await callPlugin('variableSearch.start', {
+					await callPlugin('variableSearch.start', {
 						variableId: variable.id,
 						scope: currentScope,
+						searchId,
 					});
-					set({ activeSearchId: searchId });
 				} catch (err) {
 					set({
 						isSearching: false,
