@@ -100,14 +100,6 @@ class RpcServer {
 		figma.ui.postMessage(message);
 	}
 
-	hasHandler(procedure: RpcProcedure): boolean {
-		return procedure in this.handlers;
-	}
-
-	getRegisteredProcedures(): RpcProcedure[] {
-		return Object.keys(this.handlers) as RpcProcedure[];
-	}
-
 	private sendResponse<T extends RpcProcedure>(
 		id: string,
 		procedure: T,

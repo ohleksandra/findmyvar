@@ -27,13 +27,9 @@ export interface PluginActions {
 	setSearchScope(scope: SearchScope): void;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface PluginMeta {}
-
 export interface PluginContextValue {
 	state: PluginState;
 	actions: PluginActions;
-	meta: PluginMeta;
 }
 
 export const PluginContext = createContext<PluginContextValue | null>(null);

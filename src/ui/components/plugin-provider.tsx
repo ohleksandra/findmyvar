@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { usePluginStore } from '@/store/plugin-store';
 import { useShallow } from 'zustand/react/shallow';
 import { rpcClient } from '@/lib/rpc-client';
-import { PluginContext, type PluginContextValue, type PluginMeta } from '@/context/plugin-context';
+import { PluginContext, type PluginContextValue } from '@/context/plugin-context';
 
 export function PluginProvider({ children }: { children: React.ReactNode }) {
 	const state = usePluginStore(
@@ -54,12 +54,7 @@ export function PluginProvider({ children }: { children: React.ReactNode }) {
 		};
 	}, []);
 
-	const meta: PluginMeta = useMemo(() => ({}), []);
-
-	const value: PluginContextValue = useMemo(
-		() => ({ state, actions, meta }),
-		[state, actions, meta],
-	);
+	const value: PluginContextValue = useMemo(() => ({ state, actions }), [state, actions]);
 
 	return <PluginContext.Provider value={value}>{children}</PluginContext.Provider>;
 }

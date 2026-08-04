@@ -129,20 +129,6 @@ class RpcClient {
 		};
 	}
 
-	once<T extends RpcNotification>(
-		notification: T,
-		handler: (payload: RpcNotificationPayload<T>) => boolean,
-	): () => void {
-		const unsubscribe = this.on(notification, (payload) => {
-			const shouldUnsubscribe = handler(payload);
-			if (shouldUnsubscribe) {
-				unsubscribe();
-			}
-		});
-
-		return unsubscribe;
-	}
-
 	private onMessage(event: MessageEvent): void {
 		const msg = event.data?.pluginMessage;
 
