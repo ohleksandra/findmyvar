@@ -1,9 +1,55 @@
 import { usePlugin } from '@/context/plugin-context';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Badge } from './ui/badge';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import type { VariableUsage as VariableUsageType } from '../../shared/rpc-types';
 import SearchResultSummary from './search-result-summary';
 import VariableUsage from './variable-usage';
+
+const ESTIMATED_ROW_HEIGHT = 60;
+
+const VirtualizedResultList = ({ results }: { results: VariableUsageType[] }) => {
+	const parentRef = useRef<HTMLDivElement>(null);
+
+	const virtualizer = useVirtualizer({
+		count: results.length,
+		getScrollElement: () => parentRef.current,
+		estimateSize: () => ESTIMATED_ROW_HEIGHT,
+		overscan: 5,
+	});
+
+	return (
+		<div ref={parentRef} className="overflow-auto" style={{ maxHeight: '400px' }}>
+			<div
+				style={{
+					height: `${virtualizer.getTotalSize()}px`,
+					width: '100%',
+					position: 'relative',
+				}}
+			>
+				{virtualizer.getVirtualItems().map((virtualRow) => {
+					const result = results[virtualRow.index];
+					return (
+						<div
+							key={virtualRow.key}
+							style={{
+								position: 'absolute',
+								top: 0,
+								left: 0,
+								width: '100%',
+								height: `${virtualRow.size}px`,
+								transform: `translateY(${virtualRow.start}px)`,
+							}}
+						>
+							<VariableUsage variable={result} />
+						</div>
+					);
+				})}
+			</div>
+		</div>
+	);
+};
 
 const SearchResult = () => {
 	const { state } = usePlugin();
@@ -25,16 +71,13 @@ const SearchResult = () => {
 					/>
 				</div>
 			)}
-			<Accordion type="multiple" className="w-full">
+			<Accordion type="multiple" className="w-full" aria-label="Search results by page">
 				{Object.entries(
-					searchResults.reduce(
-						(acc, result) => {
-							if (!acc[result.pageName]) acc[result.pageName] = [];
-							acc[result.pageName].push(result);
-							return acc;
-						},
-						{} as Record<string, typeof searchResults>,
-					),
+					searchResults.reduce((acc: Record<string, VariableUsageType[]>, result) => {
+						if (!acc[result.pageName]) acc[result.pageName] = [];
+						acc[result.pageName].push(result);
+						return acc;
+					}, {}),
 				).map(([pageName, results]) => (
 					<AccordionItem key={pageName} value={pageName}>
 						<AccordionTrigger className="font-sans font-semibold text-sm px-6">
@@ -44,10 +87,8 @@ const SearchResult = () => {
 								{results.length}
 							</Badge>
 						</AccordionTrigger>
-						<AccordionContent>
-							{results.map((result, idx) => (
-								<VariableUsage key={idx} variable={result} />
-							))}
+						<AccordionContent forceMount={false}>
+							<VirtualizedResultList results={results} />
 						</AccordionContent>
 					</AccordionItem>
 				))}
