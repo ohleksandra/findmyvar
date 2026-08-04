@@ -19,7 +19,7 @@ const VARIABLE_TYPE_ICON_MAP: Record<string, React.ComponentType<React.SVGProps<
 const VariableTypeIcon = (props: VariableTypeIcon) => {
 	const Icon = VARIABLE_TYPE_ICON_MAP[props.type];
 	if (!Icon) return null;
-	return <Icon {...props} />;
+	return <Icon aria-hidden="true" {...props} />;
 };
 
 export default VariableTypeIcon;

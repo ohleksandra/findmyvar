@@ -45,7 +45,7 @@ const NODE_ICON_MAP: Record<string, React.ComponentType<React.SVGProps<SVGSVGEle
 
 const NodeIcon = ({ type, ...props }: NodeIconProps) => {
 	const Icon = NODE_ICON_MAP[type] ?? DefaultIcon;
-	return <Icon {...props} />;
+	return <Icon aria-hidden="true" {...props} />;
 };
 
 export default NodeIcon;
