@@ -1,4 +1,5 @@
 import type { SearchScope, Variable, VariableUsage } from '../../shared/rpc-types';
+import { DEFAULT_SCOPE } from '../../shared/constants';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { callPlugin } from '@/lib/rpc-client';
@@ -52,7 +53,7 @@ export const usePluginStore = create<PluginStore>()(
 			searchResults: [],
 			searchQuery: '',
 			isSearchCompleted: false,
-			scope: 'all-pages',
+			scope: DEFAULT_SCOPE,
 			activeSearchId: null,
 
 			async getAllVariables() {

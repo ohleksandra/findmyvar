@@ -1,6 +1,7 @@
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 import { usePlugin } from '@/context/plugin-context';
 import type { SearchScope } from '../../shared/rpc-types';
+import { DEFAULT_SCOPE } from '../../shared/constants';
 import { cn } from '@/lib/utils';
 
 type Props = React.HTMLAttributes<HTMLDivElement>;
@@ -14,7 +15,7 @@ const ScopeSelector = (props: Props) => {
 		<div className={cn('flex items-center gap-x-2', props.className)}>
 			<p className="font-sans text-sm font-medium">Scope:</p>
 			<Tabs
-				defaultValue="all-pages"
+				defaultValue={DEFAULT_SCOPE}
 				onValueChange={(value) => setSearchScope(value as SearchScope)}
 			>
 				<TabsList className="bg-[#E5E6E8] text-sm font-medium font-sans">
