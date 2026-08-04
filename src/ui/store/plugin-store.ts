@@ -15,6 +15,7 @@ interface PluginStore {
 	searchQuery: string;
 	isSearchCompleted: boolean;
 	scope: SearchScope;
+	activeSearchId: string | null;
 
 	getAllVariables(): Promise<void>;
 	clearRecentSearches(): void;
@@ -27,9 +28,14 @@ interface PluginStore {
 	setSearchScope: (scope: SearchScope) => void;
 
 	// Helpers for internal use
-	_appendResults(results: VariableUsage[], isComplete: boolean, fromCache?: boolean): void;
-	_setProgress(progress: SearchProgress): void;
-	_setError(error: string): void;
+	_appendResults(
+		searchId: string,
+		results: VariableUsage[],
+		isComplete: boolean,
+		fromCache?: boolean,
+	): void;
+	_setProgress(searchId: string, progress: SearchProgress): void;
+	_setError(searchId: string, error: string): void;
 }
 
 export const usePluginStore = create<PluginStore>()((set, get) => ({
@@ -44,6 +50,7 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 	searchQuery: '',
 	isSearchCompleted: false,
 	scope: 'all-pages',
+	activeSearchId: null,
 
 	async getAllVariables() {
 		try {
@@ -63,6 +70,7 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 
 	startSearch: async (variable: Variable, scope?: SearchScope) => {
 		const currentScope = scope ?? get().scope;
+		const searchId = `${variable.id}-${Date.now()}`;
 
 		set({
 			isSearching: true,
@@ -71,6 +79,7 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 			error: null,
 			progress: null,
 			cached: false,
+			activeSearchId: searchId,
 		});
 
 		get().clearSearchResults();
@@ -84,6 +93,7 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 			set({
 				isSearching: false,
 				error: err instanceof Error ? err.message : 'Search failed',
+				activeSearchId: null,
 			});
 		}
 	},
@@ -92,7 +102,7 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 		try {
 			await callPlugin('variableSearch.cancel', undefined as void);
 		} finally {
-			set({ isSearching: false, isSearchCompleted: true });
+			set({ isSearching: false, isSearchCompleted: true, activeSearchId: null });
 		}
 	},
 
@@ -125,11 +135,20 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 		});
 	},
 
-	_appendResults: (results: VariableUsage[], isComplete: boolean, fromCache = false) => {
+	_appendResults: (
+		searchId: string,
+		results: VariableUsage[],
+		isComplete: boolean,
+		fromCache = false,
+	) => {
 		const state = get();
 
+		if (state.activeSearchId !== searchId) {
+			return;
+		}
+
 		if (results.length > 0) {
-			set({ searchResults: [...state.searchResults, ...results] });
+			set({ searchResults: state.searchResults.concat(results) });
 		}
 
 		if (isComplete) {
@@ -148,6 +167,7 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 				isSearching: false,
 				isSearchCompleted: true,
 				cached: fromCache,
+				activeSearchId: null,
 			});
 		}
 	},
@@ -156,11 +176,19 @@ export const usePluginStore = create<PluginStore>()((set, get) => ({
 		set({ searchQuery: query });
 	},
 
-	_setProgress: (progress: SearchProgress) => {
+	_setProgress: (searchId: string, progress: SearchProgress) => {
+		const state = get();
+		if (state.activeSearchId !== searchId) {
+			return;
+		}
 		set({ progress });
 	},
 
-	_setError: (error: string) => {
-		set({ isSearching: false, error });
+	_setError: (searchId: string, error: string) => {
+		const state = get();
+		if (state.activeSearchId !== searchId) {
+			return;
+		}
+		set({ isSearching: false, error, activeSearchId: null });
 	},
 }));

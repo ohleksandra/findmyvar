@@ -51,12 +51,13 @@ export interface RpcProcedureSchema {
 
 export interface RpcNotificationSchema {
 	'variableSearch.results': {
+		searchId: string;
 		results: VariableUsage[];
 		isComplete: boolean;
 		fromCache?: boolean;
 	};
-	'variableSearch.progress': SearchProgress;
-	'variableSearch.error': { error: string };
+	'variableSearch.progress': SearchProgress & { searchId: string };
+	'variableSearch.error': { searchId: string; error: string };
 }
 
 export type RpcProcedure = keyof RpcProcedureSchema;

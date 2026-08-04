@@ -37,13 +37,15 @@ export function PluginProvider({ children }: { children: React.ReactNode }) {
 
 	useEffect(() => {
 		const unsubResults = rpcClient.on('variableSearch.results', (p) => {
-			usePluginStore.getState()._appendResults(p.results, p.isComplete, p.fromCache);
+			usePluginStore
+				.getState()
+				._appendResults(p.searchId, p.results, p.isComplete, p.fromCache);
 		});
 		const unsubProgress = rpcClient.on('variableSearch.progress', (p) => {
-			usePluginStore.getState()._setProgress(p);
+			usePluginStore.getState()._setProgress(p.searchId, p);
 		});
 		const unsubError = rpcClient.on('variableSearch.error', (p) => {
-			usePluginStore.getState()._setError(p.error);
+			usePluginStore.getState()._setError(p.searchId, p.error);
 		});
 		return () => {
 			unsubResults();
