@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/ohleksandra/findmyvar/compare/v1.1.0...v1.1.1) (2026-08-04)
+
+
+### Bug Fixes
+
+* handle unavailable localStorage in Figma plugin iframe ([c5a64a4](https://github.com/ohleksandra/findmyvar/commit/c5a64a442d55f3cfb8b57bf7f6a23d77e0a4440c))
+
 ## [1.1.0](https://github.com/ohleksandra/findmyvar/compare/v1.0.1...v1.1.0) (2026-08-04)
 
 ### Features
