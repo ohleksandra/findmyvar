@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/ohleksandra/findmyvar/compare/v1.1.1...v1.1.2) (2026-08-04)
+
+
+### Bug Fixes
+
+* **ui:** align virtualizer row height with variable usage component ([edb9532](https://github.com/ohleksandra/findmyvar/commit/edb9532c091fb8734a20da151a3537b7b843bc68))
+
 ## [1.1.1](https://github.com/ohleksandra/findmyvar/compare/v1.1.0...v1.1.1) (2026-08-04)
 
 
