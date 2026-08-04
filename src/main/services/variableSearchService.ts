@@ -62,16 +62,17 @@ class VariableSearchService {
 		const startTime = Date.now();
 
 		const cacheKey = this.getCacheKey(variableId, scope);
-		const cached = this.cache.get(cacheKey);
+		const cached = this.getFromCache(cacheKey);
 
 		if (cached && this.isCacheValid(cached)) {
 			logger.log(
 				`[VariableSearch] Cache hit: ${cached.results.length} results (${formatDuration(Date.now() - startTime)})`,
 			);
 
-			await this.streamCachedResults(cached.results);
+			await this.streamCachedResults(searchId, cached.results);
 
 			rpcServer.notify('variableSearch.progress', {
+				searchId,
 				processed: cached.results.length,
 				total: cached.results.length,
 				currentPage: 'Cached',
@@ -84,11 +85,13 @@ class VariableSearchService {
 
 		if (scope === 'selection' && figma.currentPage.selection.length === 0) {
 			rpcServer.notify('variableSearch.results', {
+				searchId,
 				results: [],
 				isComplete: true,
 			});
 
 			rpcServer.notify('variableSearch.progress', {
+				searchId,
 				processed: 0,
 				total: 0,
 				currentPage: 'No selection',
@@ -158,6 +161,7 @@ class VariableSearchService {
 
 						if (pendingResults.length >= RESULTS_BATCH_SIZE) {
 							rpcServer.notify('variableSearch.results', {
+								searchId,
 								results: pendingResults,
 								isComplete: false,
 							});
@@ -168,6 +172,7 @@ class VariableSearchService {
 
 						if (nodesProcessed % NODES_PER_PROGRESS === 0) {
 							rpcServer.notify('variableSearch.progress', {
+								searchId,
 								processed: processedTopLevelNodes,
 								total: totalTopLevelNodes,
 								currentPage: pageName,
@@ -179,6 +184,7 @@ class VariableSearchService {
 					processedTopLevelNodes++;
 
 					rpcServer.notify('variableSearch.progress', {
+						searchId,
 						processed: processedTopLevelNodes,
 						total: totalTopLevelNodes,
 						currentPage: pageName,
@@ -189,17 +195,20 @@ class VariableSearchService {
 
 			if (pendingResults.length > 0) {
 				rpcServer.notify('variableSearch.results', {
+					searchId,
 					results: pendingResults,
 					isComplete: false,
 				});
 			}
 
 			rpcServer.notify('variableSearch.results', {
+				searchId,
 				results: [],
 				isComplete: true,
 			});
 
 			rpcServer.notify('variableSearch.progress', {
+				searchId,
 				processed: totalTopLevelNodes,
 				total: totalTopLevelNodes,
 				currentPage: 'Complete',
@@ -220,7 +229,7 @@ class VariableSearchService {
 			);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Unknown error';
-			rpcServer.notify('variableSearch.error', { error: message });
+			rpcServer.notify('variableSearch.error', { searchId, error: message });
 		} finally {
 			figma.skipInvisibleInstanceChildren = previousSkipInvisible;
 			if (this.activeSearchId === searchId) {
@@ -270,12 +279,13 @@ class VariableSearchService {
 		yield* traverse(node, this);
 	}
 
-	private async streamCachedResults(results: VariableUsage[]): Promise<void> {
+	private async streamCachedResults(searchId: string, results: VariableUsage[]): Promise<void> {
 		for (let i = 0; i < results.length; i += RESULTS_BATCH_SIZE) {
 			const batch = results.slice(i, i + RESULTS_BATCH_SIZE);
 			const isLast = i + RESULTS_BATCH_SIZE >= results.length;
 
 			rpcServer.notify('variableSearch.results', {
+				searchId,
 				results: batch,
 				isComplete: isLast,
 				fromCache: true,
@@ -288,11 +298,21 @@ class VariableSearchService {
 
 		if (results.length === 0) {
 			rpcServer.notify('variableSearch.results', {
+				searchId,
 				results: [],
 				isComplete: true,
 				fromCache: true,
 			});
 		}
+	}
+
+	private getFromCache(key: string): CacheEntry | undefined {
+		const entry = this.cache.get(key);
+		if (entry) {
+			this.cache.delete(key);
+			this.cache.set(key, entry);
+		}
+		return entry;
 	}
 
 	private addToCache(key: string, entry: CacheEntry): void {
