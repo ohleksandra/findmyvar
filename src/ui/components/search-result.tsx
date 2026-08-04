@@ -7,7 +7,7 @@ import type { VariableUsage as VariableUsageType } from '../../shared/rpc-types'
 import SearchResultSummary from './search-result-summary';
 import VariableUsage from './variable-usage';
 
-const ESTIMATED_ROW_HEIGHT = 60;
+const ESTIMATED_ROW_HEIGHT = 42;
 
 const VirtualizedResultList = ({ results }: { results: VariableUsageType[] }) => {
 	const parentRef = useRef<HTMLDivElement>(null);
