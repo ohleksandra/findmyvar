@@ -87,7 +87,7 @@ const SearchResult = () => {
 								{results.length}
 							</Badge>
 						</AccordionTrigger>
-						<AccordionContent forceMount={false}>
+						<AccordionContent>
 							<VirtualizedResultList results={results} />
 						</AccordionContent>
 					</AccordionItem>
