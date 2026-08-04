@@ -58,6 +58,20 @@ Defines all typed RPC contracts: procedures (request/response) and notifications
 - **Notifications**: Main pushes to UI without a request (e.g., `variableSearch.results`, `variableSearch.progress`)
 - Message format uses `__rpc: true` / `__rpcNotification: true` discriminators
 
+### Streaming RPC Contract
+
+The `variableSearch.start` procedure is a **streaming RPC**:
+
+1. **Procedure call**: UI calls `variableSearch.start` with `{ variableId, scope }`. The handler returns `{ started: true }` immediately (fire-and-forget). The search runs asynchronously in the main process.
+
+2. **Streaming results**: As the search progresses, the main process sends `variableSearch.results` notifications with batches of results. Each notification includes a `searchId` to correlate with the originating request.
+
+3. **Completion**: When the search finishes, a final `variableSearch.results` notification is sent with `isComplete: true`. The store's `_appendResults` method handles this terminal state.
+
+4. **Stale-notification guard**: The store maintains an `activeSearchId`. When a search is cancelled or a new search starts, the `activeSearchId` is updated. Incoming notifications with a mismatched `searchId` are ignored, preventing stale data from updating the UI after cancellation.
+
+5. **Error handling**: If the search fails, a `variableSearch.error` notification is sent with the error message and `searchId`.
+
 ## Key Conventions
 
 - **Path alias**: `@/` resolves to `src/ui/`
