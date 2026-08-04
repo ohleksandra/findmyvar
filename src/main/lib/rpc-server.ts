@@ -75,6 +75,8 @@ class RpcServer {
 
 			this.sendResponse(id, procedure, response);
 		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			this.sendError(id, procedure, errorMessage);
 			logger.error(`[RPC Server] Error in "${procedure}":`, error);
 
 			if (this.config.onError) {
