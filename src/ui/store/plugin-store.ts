@@ -1,10 +1,29 @@
 import type { SearchScope, Variable, VariableUsage } from '../../shared/rpc-types';
 import { DEFAULT_SCOPE } from '../../shared/constants';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { callPlugin } from '@/lib/rpc-client';
 import type { SearchProgress } from '../../shared/rpc-types';
 import { nanoid } from 'nanoid';
+
+const safeStorage: Storage = (() => {
+	try {
+		const ls = localStorage;
+		const k = '__findmyvar_ls_test__';
+		ls.setItem(k, '1');
+		ls.removeItem(k);
+		return ls;
+	} catch {
+		return {
+			getItem: () => null,
+			setItem: () => {},
+			removeItem: () => {},
+			clear: () => {},
+			key: () => null,
+			length: 0,
+		} as Storage;
+	}
+})();
 
 interface PluginStore {
 	variables: Variable[];
@@ -202,6 +221,7 @@ export const usePluginStore = create<PluginStore>()(
 		}),
 		{
 			name: 'findmyvar-store',
+			storage: createJSONStorage(() => safeStorage),
 			partialize: (state) => ({
 				recentSearches: state.recentSearches,
 				scope: state.scope,
