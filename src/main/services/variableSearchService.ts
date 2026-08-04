@@ -21,12 +21,15 @@ const RESULTS_BATCH_SIZE = 50;
 const NODES_PER_YIELD = 200;
 const NODES_PER_PROGRESS = 500;
 const MAX_CACHE_ENTRIES = 20;
+const DOCUMENT_CHANGE_DEBOUNCE_MS = 500;
 
 class VariableSearchService {
 	private cache: Map<string, CacheEntry> = new Map();
 	private documentChangeCount: number = 0;
 	private activeSearchId: string | null = null;
 	private isInitialized: boolean = false;
+	private pendingChangeTimer: ReturnType<typeof setTimeout> | null = null;
+	private pendingChangeHasRelevant: boolean = false;
 
 	async init(): Promise<void> {
 		if (this.isInitialized) return;
@@ -42,6 +45,12 @@ class VariableSearchService {
 	}
 
 	clearCache(variableId?: string): void {
+		if (this.pendingChangeTimer !== null) {
+			clearTimeout(this.pendingChangeTimer);
+			this.pendingChangeTimer = null;
+			this.pendingChangeHasRelevant = false;
+		}
+
 		if (variableId) {
 			this.cache.delete(variableId);
 		} else {
@@ -335,8 +344,18 @@ class VariableSearchService {
 			);
 		});
 
-		if (relevantChange) {
-			this.documentChangeCount++;
+		if (!relevantChange) return;
+
+		this.pendingChangeHasRelevant = true;
+
+		if (this.pendingChangeTimer === null) {
+			this.pendingChangeTimer = setTimeout(() => {
+				if (this.pendingChangeHasRelevant) {
+					this.documentChangeCount++;
+				}
+				this.pendingChangeTimer = null;
+				this.pendingChangeHasRelevant = false;
+			}, DOCUMENT_CHANGE_DEBOUNCE_MS);
 		}
 	}
 
