@@ -9,7 +9,7 @@ vi.mock('../src/main/lib/rpc-server', () => ({
 	},
 }));
 
-vi.mock('../src/main/lib/logger', () => ({
+vi.mock('../src/shared/logger', () => ({
 	logger: {
 		log: vi.fn(),
 		debug: vi.fn(),

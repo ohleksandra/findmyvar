@@ -1,5 +1,5 @@
 import { SearchScope, VariableUsage } from '../../shared/rpc-types';
-import { formatDuration, logger } from '../lib/logger';
+import { formatDuration, logger } from '../../shared/logger';
 import { rpcServer } from '../lib/rpc-server';
 
 interface CacheEntry {

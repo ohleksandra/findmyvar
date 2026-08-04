@@ -1,6 +1,6 @@
 import { registerVariableSearchHandlers } from './handlers/variable-search-handler';
 import { getVariablesHandler } from './handlers/get-variables';
-import { logger } from './lib/logger';
+import { logger } from '../shared/logger';
 import { rpcServer } from './lib/rpc-server';
 import { variableSearchService } from './services/variableSearchService';
 

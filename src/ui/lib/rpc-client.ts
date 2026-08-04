@@ -10,7 +10,7 @@ import {
 	type RpcResponseMessage,
 } from '../../shared/rpc-types';
 import { nanoid } from 'nanoid';
-import { formatDuration, logger } from './logger';
+import { formatDuration, logger } from '../../shared/logger';
 
 interface PendingRequest<T = unknown> {
 	resolve: (value: T) => void;

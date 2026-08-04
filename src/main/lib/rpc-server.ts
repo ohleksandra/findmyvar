@@ -8,7 +8,7 @@ import {
 	RpcResponse,
 	RpcResponseMessage,
 } from '../../shared/rpc-types';
-import { formatDuration, logger } from './logger';
+import { formatDuration, logger } from '../../shared/logger';
 
 type RpcHandler<T extends RpcProcedure> = (
 	payload: RpcRequest<T>,
