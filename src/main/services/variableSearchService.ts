@@ -1,4 +1,4 @@
-import { SearchScope, VariableUsage } from '../../shared/rpc-types';
+import { NodeType, SearchScope, VariableUsage } from '../../shared/rpc-types';
 import { formatDuration, logger } from '../../shared/logger';
 import { rpcServer } from '../lib/rpc-server';
 
@@ -157,7 +157,7 @@ class VariableSearchService {
 								const usage: VariableUsage = {
 									nodeId: node.id,
 									nodeName: node.name,
-									nodeType: node.type,
+									nodeType: node.type as NodeType,
 									field: field.replace('[0]', ''),
 									pageName,
 									pageId,

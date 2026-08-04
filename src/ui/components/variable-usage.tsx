@@ -28,10 +28,7 @@ const VariableUsage = ({ variable }: VariableUsageProps) => {
 			onClick={async () => await navigateToResult(variable)}
 		>
 			<div className="flex w-4 h-4 justify-center items-center">
-				<NodeIcon
-					type={variable.nodeType as SceneNode['type']}
-					className="text-[#656B75] size-2.5"
-				/>
+				<NodeIcon type={variable.nodeType} className="text-[#656B75] size-2.5" />
 			</div>
 			<div className="flex flex-col items-start ml-1 gap-y-0.5">
 				<div className="flex font-sans font-medium gap-x-2 items-center">

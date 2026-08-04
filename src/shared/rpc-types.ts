@@ -6,10 +6,40 @@ export interface Variable {
 	remote?: boolean;
 }
 
+export type NodeType =
+	| 'BOOLEAN_OPERATION'
+	| 'COMPONENT'
+	| 'COMPONENT_SET'
+	| 'CONNECTOR'
+	| 'ELLIPSE'
+	| 'EMBED'
+	| 'FRAME'
+	| 'GROUP'
+	| 'HIGHLIGHT'
+	| 'INSTANCE'
+	| 'LINE'
+	| 'LINK_UNFURL'
+	| 'MEDIA'
+	| 'PAGE'
+	| 'POLYGON'
+	| 'RECTANGLE'
+	| 'SECTION'
+	| 'SHAPE_WITH_TEXT'
+	| 'SLICE'
+	| 'STAMP'
+	| 'STAR'
+	| 'STICKY'
+	| 'TABLE'
+	| 'TABLE_CELL'
+	| 'TEXT'
+	| 'VECTOR'
+	| 'WASHI_TAPE'
+	| 'WIDGET';
+
 export interface VariableUsage {
 	nodeId: string;
 	nodeName: string;
-	nodeType: string;
+	nodeType: NodeType;
 	field: string; // e.g., 'fills', 'strokes', 'width'
 	pageName: string;
 	pageId: string;
