@@ -8,7 +8,7 @@ import {
 	RpcResponse,
 	RpcResponseMessage,
 } from '../../shared/rpc-types';
-import { formatDuration, logger } from './logger';
+import { formatDuration, logger } from '../../shared/logger';
 
 type RpcHandler<T extends RpcProcedure> = (
 	payload: RpcRequest<T>,
@@ -75,6 +75,8 @@ class RpcServer {
 
 			this.sendResponse(id, procedure, response);
 		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			this.sendError(id, procedure, errorMessage);
 			logger.error(`[RPC Server] Error in "${procedure}":`, error);
 
 			if (this.config.onError) {
@@ -96,14 +98,6 @@ class RpcServer {
 		};
 
 		figma.ui.postMessage(message);
-	}
-
-	hasHandler(procedure: RpcProcedure): boolean {
-		return procedure in this.handlers;
-	}
-
-	getRegisteredProcedures(): RpcProcedure[] {
-		return Object.keys(this.handlers) as RpcProcedure[];
 	}
 
 	private sendResponse<T extends RpcProcedure>(

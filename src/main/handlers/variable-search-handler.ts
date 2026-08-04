@@ -2,9 +2,8 @@ import { rpcServer } from '../lib/rpc-server';
 import { variableSearchService } from '../services/variableSearchService';
 
 export function registerVariableSearchHandlers(): void {
-	rpcServer.registerHandler('variableSearch.start', async (payload) => {
-		await variableSearchService.search(payload.variableId, payload.scope);
-
+	rpcServer.registerHandler('variableSearch.start', (payload) => {
+		void variableSearchService.search(payload.variableId, payload.scope, payload.searchId);
 		return { started: true };
 	});
 

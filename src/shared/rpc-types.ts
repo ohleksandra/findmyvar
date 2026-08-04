@@ -6,10 +6,40 @@ export interface Variable {
 	remote?: boolean;
 }
 
+export type NodeType =
+	| 'BOOLEAN_OPERATION'
+	| 'COMPONENT'
+	| 'COMPONENT_SET'
+	| 'CONNECTOR'
+	| 'ELLIPSE'
+	| 'EMBED'
+	| 'FRAME'
+	| 'GROUP'
+	| 'HIGHLIGHT'
+	| 'INSTANCE'
+	| 'LINE'
+	| 'LINK_UNFURL'
+	| 'MEDIA'
+	| 'PAGE'
+	| 'POLYGON'
+	| 'RECTANGLE'
+	| 'SECTION'
+	| 'SHAPE_WITH_TEXT'
+	| 'SLICE'
+	| 'STAMP'
+	| 'STAR'
+	| 'STICKY'
+	| 'TABLE'
+	| 'TABLE_CELL'
+	| 'TEXT'
+	| 'VECTOR'
+	| 'WASHI_TAPE'
+	| 'WIDGET';
+
 export interface VariableUsage {
 	nodeId: string;
 	nodeName: string;
-	nodeType: string;
+	nodeType: NodeType;
 	field: string; // e.g., 'fills', 'strokes', 'width'
 	pageName: string;
 	pageId: string;
@@ -32,7 +62,7 @@ export interface RpcProcedureSchema {
 	};
 
 	'variableSearch.start': {
-		request: { variableId: string; scope: SearchScope };
+		request: { variableId: string; scope: SearchScope; searchId: string };
 		response: { started: boolean };
 	};
 	'variableSearch.cancel': {
@@ -51,12 +81,13 @@ export interface RpcProcedureSchema {
 
 export interface RpcNotificationSchema {
 	'variableSearch.results': {
+		searchId: string;
 		results: VariableUsage[];
 		isComplete: boolean;
 		fromCache?: boolean;
 	};
-	'variableSearch.progress': SearchProgress;
-	'variableSearch.error': { error: string };
+	'variableSearch.progress': SearchProgress & { searchId: string };
+	'variableSearch.error': { searchId: string; error: string };
 }
 
 export type RpcProcedure = keyof RpcProcedureSchema;
@@ -76,13 +107,19 @@ export interface RpcRequestMessage<T extends RpcProcedure = RpcProcedure> {
 	payload: RpcRequest<T>;
 }
 
-export interface RpcResponseMessage<T extends RpcProcedure = RpcProcedure> {
-	__rpc: true;
-	id: string;
-	procedure: T;
-	response?: RpcResponse<T>;
-	error?: string;
-}
+export type RpcResponseMessage<T extends RpcProcedure = RpcProcedure> =
+	| {
+			__rpc: true;
+			id: string;
+			procedure: T;
+			response: RpcResponse<T>;
+	  }
+	| {
+			__rpc: true;
+			id: string;
+			procedure: T;
+			error: string;
+	  };
 
 export interface RpcNotificationMessage<T extends RpcNotification = RpcNotification> {
 	__rpcNotification: true;

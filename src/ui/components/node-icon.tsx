@@ -16,9 +16,10 @@ import RectangleIcon from './icons/node-types/rectangle';
 import SectionIcon from './icons/node-types/section';
 import SliceIcon from './icons/node-types/slice';
 import MediaNodeIcon from './icons/node-types/media-node';
+import type { NodeType } from '../../shared/rpc-types';
 
 type NodeIconProps = {
-	type: SceneNode['type'];
+	type: NodeType;
 } & React.HTMLAttributes<SVGElement>;
 
 const NODE_ICON_MAP: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
@@ -45,7 +46,7 @@ const NODE_ICON_MAP: Record<string, React.ComponentType<React.SVGProps<SVGSVGEle
 
 const NodeIcon = ({ type, ...props }: NodeIconProps) => {
 	const Icon = NODE_ICON_MAP[type] ?? DefaultIcon;
-	return <Icon {...props} />;
+	return <Icon aria-hidden="true" {...props} />;
 };
 
 export default NodeIcon;

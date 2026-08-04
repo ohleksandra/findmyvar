@@ -1,5 +1,5 @@
-import { SearchScope, VariableUsage } from '../../shared/rpc-types';
-import { formatDuration, logger } from '../lib/logger';
+import { NodeType, SearchScope, VariableUsage } from '../../shared/rpc-types';
+import { formatDuration, logger } from '../../shared/logger';
 import { rpcServer } from '../lib/rpc-server';
 
 interface CacheEntry {
@@ -21,12 +21,15 @@ const RESULTS_BATCH_SIZE = 50;
 const NODES_PER_YIELD = 200;
 const NODES_PER_PROGRESS = 500;
 const MAX_CACHE_ENTRIES = 20;
+const DOCUMENT_CHANGE_DEBOUNCE_MS = 500;
 
 class VariableSearchService {
 	private cache: Map<string, CacheEntry> = new Map();
 	private documentChangeCount: number = 0;
 	private activeSearchId: string | null = null;
 	private isInitialized: boolean = false;
+	private pendingChangeTimer: ReturnType<typeof setTimeout> | null = null;
+	private pendingChangeHasRelevant: boolean = false;
 
 	async init(): Promise<void> {
 		if (this.isInitialized) return;
@@ -42,6 +45,12 @@ class VariableSearchService {
 	}
 
 	clearCache(variableId?: string): void {
+		if (this.pendingChangeTimer !== null) {
+			clearTimeout(this.pendingChangeTimer);
+			this.pendingChangeTimer = null;
+			this.pendingChangeHasRelevant = false;
+		}
+
 		if (variableId) {
 			this.cache.delete(variableId);
 		} else {
@@ -56,22 +65,22 @@ class VariableSearchService {
 		}
 	}
 
-	async search(variableId: string, scope: SearchScope): Promise<void> {
-		const searchId = `${variableId}-${Date.now()}`;
+	async search(variableId: string, scope: SearchScope, searchId: string): Promise<void> {
 		this.activeSearchId = searchId;
 		const startTime = Date.now();
 
 		const cacheKey = this.getCacheKey(variableId, scope);
-		const cached = this.cache.get(cacheKey);
+		const cached = this.getFromCache(cacheKey);
 
 		if (cached && this.isCacheValid(cached)) {
 			logger.log(
 				`[VariableSearch] Cache hit: ${cached.results.length} results (${formatDuration(Date.now() - startTime)})`,
 			);
 
-			await this.streamCachedResults(cached.results);
+			await this.streamCachedResults(searchId, cached.results);
 
 			rpcServer.notify('variableSearch.progress', {
+				searchId,
 				processed: cached.results.length,
 				total: cached.results.length,
 				currentPage: 'Cached',
@@ -84,11 +93,13 @@ class VariableSearchService {
 
 		if (scope === 'selection' && figma.currentPage.selection.length === 0) {
 			rpcServer.notify('variableSearch.results', {
+				searchId,
 				results: [],
 				isComplete: true,
 			});
 
 			rpcServer.notify('variableSearch.progress', {
+				searchId,
 				processed: 0,
 				total: 0,
 				currentPage: 'No selection',
@@ -145,7 +156,7 @@ class VariableSearchService {
 								const usage: VariableUsage = {
 									nodeId: node.id,
 									nodeName: node.name,
-									nodeType: node.type,
+									nodeType: node.type as NodeType,
 									field: field.replace('[0]', ''),
 									pageName,
 									pageId,
@@ -158,6 +169,7 @@ class VariableSearchService {
 
 						if (pendingResults.length >= RESULTS_BATCH_SIZE) {
 							rpcServer.notify('variableSearch.results', {
+								searchId,
 								results: pendingResults,
 								isComplete: false,
 							});
@@ -168,6 +180,7 @@ class VariableSearchService {
 
 						if (nodesProcessed % NODES_PER_PROGRESS === 0) {
 							rpcServer.notify('variableSearch.progress', {
+								searchId,
 								processed: processedTopLevelNodes,
 								total: totalTopLevelNodes,
 								currentPage: pageName,
@@ -179,6 +192,7 @@ class VariableSearchService {
 					processedTopLevelNodes++;
 
 					rpcServer.notify('variableSearch.progress', {
+						searchId,
 						processed: processedTopLevelNodes,
 						total: totalTopLevelNodes,
 						currentPage: pageName,
@@ -189,17 +203,20 @@ class VariableSearchService {
 
 			if (pendingResults.length > 0) {
 				rpcServer.notify('variableSearch.results', {
+					searchId,
 					results: pendingResults,
 					isComplete: false,
 				});
 			}
 
 			rpcServer.notify('variableSearch.results', {
+				searchId,
 				results: [],
 				isComplete: true,
 			});
 
 			rpcServer.notify('variableSearch.progress', {
+				searchId,
 				processed: totalTopLevelNodes,
 				total: totalTopLevelNodes,
 				currentPage: 'Complete',
@@ -220,7 +237,7 @@ class VariableSearchService {
 			);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Unknown error';
-			rpcServer.notify('variableSearch.error', { error: message });
+			rpcServer.notify('variableSearch.error', { searchId, error: message });
 		} finally {
 			figma.skipInvisibleInstanceChildren = previousSkipInvisible;
 			if (this.activeSearchId === searchId) {
@@ -270,12 +287,13 @@ class VariableSearchService {
 		yield* traverse(node, this);
 	}
 
-	private async streamCachedResults(results: VariableUsage[]): Promise<void> {
+	private async streamCachedResults(searchId: string, results: VariableUsage[]): Promise<void> {
 		for (let i = 0; i < results.length; i += RESULTS_BATCH_SIZE) {
 			const batch = results.slice(i, i + RESULTS_BATCH_SIZE);
 			const isLast = i + RESULTS_BATCH_SIZE >= results.length;
 
 			rpcServer.notify('variableSearch.results', {
+				searchId,
 				results: batch,
 				isComplete: isLast,
 				fromCache: true,
@@ -288,11 +306,21 @@ class VariableSearchService {
 
 		if (results.length === 0) {
 			rpcServer.notify('variableSearch.results', {
+				searchId,
 				results: [],
 				isComplete: true,
 				fromCache: true,
 			});
 		}
+	}
+
+	private getFromCache(key: string): CacheEntry | undefined {
+		const entry = this.cache.get(key);
+		if (entry) {
+			this.cache.delete(key);
+			this.cache.set(key, entry);
+		}
+		return entry;
 	}
 
 	private addToCache(key: string, entry: CacheEntry): void {
@@ -315,8 +343,18 @@ class VariableSearchService {
 			);
 		});
 
-		if (relevantChange) {
-			this.documentChangeCount++;
+		if (!relevantChange) return;
+
+		this.pendingChangeHasRelevant = true;
+
+		if (this.pendingChangeTimer === null) {
+			this.pendingChangeTimer = setTimeout(() => {
+				if (this.pendingChangeHasRelevant) {
+					this.documentChangeCount++;
+				}
+				this.pendingChangeTimer = null;
+				this.pendingChangeHasRelevant = false;
+			}, DOCUMENT_CHANGE_DEBOUNCE_MS);
 		}
 	}
 

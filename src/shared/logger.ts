@@ -1,4 +1,16 @@
-const isDebugMode = import.meta.env.DEV;
+declare const IS_DEBUG: boolean;
+
+function getIsDebug(): boolean {
+	if (typeof figma !== 'undefined') {
+		return IS_DEBUG;
+	}
+	if (typeof import.meta !== 'undefined' && import.meta.env) {
+		return import.meta.env.DEV;
+	}
+	return false;
+}
+
+const isDebugMode = getIsDebug();
 
 export function isDebug(): boolean {
 	return isDebugMode;
@@ -6,7 +18,7 @@ export function isDebug(): boolean {
 
 export const logger = {
 	log: (...args: unknown[]) => {
-		console.log(...args);
+		if (isDebugMode) console.log(...args);
 	},
 	debug: (...args: unknown[]) => {
 		if (isDebugMode) console.log(...args);

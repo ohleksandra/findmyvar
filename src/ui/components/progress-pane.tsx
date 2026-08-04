@@ -40,7 +40,14 @@ const ProgressPane = () => {
 					</Button>
 				</div>
 			</div>
-			<div>{isSearching && <Progress value={searchProgress} />}</div>
+			<div>
+				{isSearching && (
+					<Progress
+						value={searchProgress}
+						aria-valuetext={`${searchProgress}% complete`}
+					/>
+				)}
+			</div>
 		</div>
 	);
 };

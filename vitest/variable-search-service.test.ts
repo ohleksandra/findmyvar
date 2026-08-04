@@ -9,7 +9,7 @@ vi.mock('../src/main/lib/rpc-server', () => ({
 	},
 }));
 
-vi.mock('../src/main/lib/logger', () => ({
+vi.mock('../src/shared/logger', () => ({
 	logger: {
 		log: vi.fn(),
 		debug: vi.fn(),
@@ -262,7 +262,7 @@ describe('VariableSearchService', () => {
 	});
 
 	describe('LRU cache eviction', () => {
-		test('evicts oldest entry when cache exceeds 20 entries', async () => {
+		test('evicts least recently used entry, not just oldest', async () => {
 			const mockFigma = {
 				currentPage: createMockPage('page-1', 'Page 1', []),
 				skipInvisibleInstanceChildren: false,
@@ -271,7 +271,7 @@ describe('VariableSearchService', () => {
 
 			vi.stubGlobal('figma', mockFigma);
 
-			for (let i = 0; i < 25; i++) {
+			for (let i = 0; i < 20; i++) {
 				const search = variableSearchService.search(`var-${i}`, 'current-page');
 				await vi.runAllTimersAsync();
 				await search;
@@ -279,9 +279,21 @@ describe('VariableSearchService', () => {
 
 			mockNotify.mockClear();
 
-			const firstVarSearch = variableSearchService.search('var-0', 'current-page');
+			const accessSearch = variableSearchService.search('var-5', 'current-page');
 			await vi.runAllTimersAsync();
-			await firstVarSearch;
+			await accessSearch;
+
+			mockNotify.mockClear();
+
+			const newSearch = variableSearchService.search('var-new', 'current-page');
+			await vi.runAllTimersAsync();
+			await newSearch;
+
+			mockNotify.mockClear();
+
+			const var5Search = variableSearchService.search('var-5', 'current-page');
+			await vi.runAllTimersAsync();
+			await var5Search;
 
 			const resultCalls = mockNotify.mock.calls.filter(
 				(call) => call[0] === 'variableSearch.results',
@@ -291,7 +303,23 @@ describe('VariableSearchService', () => {
 				(call) => (call[1] as { fromCache?: boolean }).fromCache === true,
 			);
 
-			expect(fromCache).toBe(false);
+			expect(fromCache).toBe(true);
+
+			mockNotify.mockClear();
+
+			const var0Search = variableSearchService.search('var-0', 'current-page');
+			await vi.runAllTimersAsync();
+			await var0Search;
+
+			const resultCalls2 = mockNotify.mock.calls.filter(
+				(call) => call[0] === 'variableSearch.results',
+			);
+
+			const fromCache2 = resultCalls2.some(
+				(call) => (call[1] as { fromCache?: boolean }).fromCache === true,
+			);
+
+			expect(fromCache2).toBe(false);
 		});
 	});
 

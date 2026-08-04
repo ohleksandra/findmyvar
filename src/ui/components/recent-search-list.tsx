@@ -19,15 +19,25 @@ const RecentSearchList = (props: Props) => {
 				{recentSearches.map((variable) => (
 					<li key={variable.id}>
 						<Badge
+							asChild
 							variant={'secondary'}
 							className="cursor-pointer flex items-center gap-1 bg-[#E5E6E8] rounded-md font-mono"
-							onClick={async () => {
-								setSearchQuery(variable.name);
-								await startSearch(variable);
-							}}
 						>
-							<VariableTypeIcon className="size-4!" type={variable.resolvedType} />
-							<span className="text-xs">{variable.name}</span>
+							<button
+								type="button"
+								aria-label={`Search again for ${variable.name}`}
+								onClick={async () => {
+									setSearchQuery(variable.name);
+									await startSearch(variable);
+								}}
+							>
+								<VariableTypeIcon
+									className="size-4!"
+									type={variable.resolvedType}
+									aria-hidden="true"
+								/>
+								<span className="text-xs">{variable.name}</span>
+							</button>
 						</Badge>
 					</li>
 				))}

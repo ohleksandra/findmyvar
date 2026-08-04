@@ -10,7 +10,7 @@ import {
 	type RpcResponseMessage,
 } from '../../shared/rpc-types';
 import { nanoid } from 'nanoid';
-import { formatDuration, logger } from './logger';
+import { formatDuration, logger } from '../../shared/logger';
 
 interface PendingRequest<T = unknown> {
 	resolve: (value: T) => void;
@@ -129,20 +129,6 @@ class RpcClient {
 		};
 	}
 
-	once<T extends RpcNotification>(
-		notification: T,
-		handler: (payload: RpcNotificationPayload<T>) => boolean,
-	): () => void {
-		const unsubscribe = this.on(notification, (payload) => {
-			const shouldUnsubscribe = handler(payload);
-			if (shouldUnsubscribe) {
-				unsubscribe();
-			}
-		});
-
-		return unsubscribe;
-	}
-
 	private onMessage(event: MessageEvent): void {
 		const msg = event.data?.pluginMessage;
 
@@ -160,7 +146,7 @@ class RpcClient {
 	}
 
 	private handleResponse(msg: RpcResponseMessage): void {
-		const { id, procedure, response, error } = msg;
+		const { id, procedure } = msg;
 		const pending = this.pending.get(id);
 
 		if (!pending) {
@@ -172,12 +158,12 @@ class RpcClient {
 
 		const duration = Date.now() - pending.startTime;
 
-		if (error !== undefined) {
-			logger.error(`[RPC Client] Error in "${procedure}": ${error}`);
-			pending.reject(new Error(error));
+		if ('error' in msg) {
+			logger.error(`[RPC Client] Error in "${procedure}": ${msg.error}`);
+			pending.reject(new Error(msg.error));
 		} else {
 			logger.debug(`[RPC Client] "${procedure}" completed in ${formatDuration(duration)}`);
-			pending.resolve(response);
+			pending.resolve(msg.response);
 		}
 	}
 
