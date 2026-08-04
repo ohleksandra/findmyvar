@@ -65,8 +65,7 @@ class VariableSearchService {
 		}
 	}
 
-	async search(variableId: string, scope: SearchScope): Promise<void> {
-		const searchId = `${variableId}-${Date.now()}`;
+	async search(variableId: string, scope: SearchScope, searchId: string): Promise<void> {
 		this.activeSearchId = searchId;
 		const startTime = Date.now();
 

@@ -74,7 +74,6 @@ export const usePluginStore = create<PluginStore>()(
 
 			startSearch: async (variable: Variable, scope?: SearchScope) => {
 				const currentScope = scope ?? get().scope;
-				const searchId = `${variable.id}-${Date.now()}`;
 
 				set({
 					isSearching: true,
@@ -83,16 +82,16 @@ export const usePluginStore = create<PluginStore>()(
 					error: null,
 					progress: null,
 					cached: false,
-					activeSearchId: searchId,
 				});
 
 				get().clearSearchResults();
 
 				try {
-					await callPlugin('variableSearch.start', {
+					const { searchId } = await callPlugin('variableSearch.start', {
 						variableId: variable.id,
 						scope: currentScope,
 					});
+					set({ activeSearchId: searchId });
 				} catch (err) {
 					set({
 						isSearching: false,

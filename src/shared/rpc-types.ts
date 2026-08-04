@@ -63,7 +63,7 @@ export interface RpcProcedureSchema {
 
 	'variableSearch.start': {
 		request: { variableId: string; scope: SearchScope };
-		response: { started: boolean };
+		response: { started: boolean; searchId: string };
 	};
 	'variableSearch.cancel': {
 		request: void;
