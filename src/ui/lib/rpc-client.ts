@@ -146,7 +146,7 @@ class RpcClient {
 	}
 
 	private handleResponse(msg: RpcResponseMessage): void {
-		const { id, procedure, response, error } = msg;
+		const { id, procedure } = msg;
 		const pending = this.pending.get(id);
 
 		if (!pending) {
@@ -158,12 +158,12 @@ class RpcClient {
 
 		const duration = Date.now() - pending.startTime;
 
-		if (error !== undefined) {
-			logger.error(`[RPC Client] Error in "${procedure}": ${error}`);
-			pending.reject(new Error(error));
+		if ('error' in msg) {
+			logger.error(`[RPC Client] Error in "${procedure}": ${msg.error}`);
+			pending.reject(new Error(msg.error));
 		} else {
 			logger.debug(`[RPC Client] "${procedure}" completed in ${formatDuration(duration)}`);
-			pending.resolve(response);
+			pending.resolve(msg.response);
 		}
 	}
 

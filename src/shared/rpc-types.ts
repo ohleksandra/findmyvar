@@ -77,13 +77,19 @@ export interface RpcRequestMessage<T extends RpcProcedure = RpcProcedure> {
 	payload: RpcRequest<T>;
 }
 
-export interface RpcResponseMessage<T extends RpcProcedure = RpcProcedure> {
-	__rpc: true;
-	id: string;
-	procedure: T;
-	response?: RpcResponse<T>;
-	error?: string;
-}
+export type RpcResponseMessage<T extends RpcProcedure = RpcProcedure> =
+	| {
+			__rpc: true;
+			id: string;
+			procedure: T;
+			response: RpcResponse<T>;
+	  }
+	| {
+			__rpc: true;
+			id: string;
+			procedure: T;
+			error: string;
+	  };
 
 export interface RpcNotificationMessage<T extends RpcNotification = RpcNotification> {
 	__rpcNotification: true;
