@@ -1,13 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { VariableUsage } from '../src/shared/rpc-types';
+import { VariableSearchService } from '../src/main/services/variableSearchService';
 
 const mockNotify = vi.fn();
-
-vi.mock('../src/main/lib/rpc-server', () => ({
-	rpcServer: {
-		notify: (...args: unknown[]) => mockNotify(...args),
-	},
-}));
 
 vi.mock('../src/shared/logger', () => ({
 	logger: {
@@ -65,15 +60,16 @@ function createMockPage(id: string, name: string, children: SceneNode[] = []): P
 }
 
 describe('VariableSearchService', () => {
-	let variableSearchService: typeof import('../src/main/services/variableSearchService').variableSearchService;
+	let variableSearchService: VariableSearchService;
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
-		vi.resetModules();
 		vi.useFakeTimers();
 
-		const module = await import('../src/main/services/variableSearchService');
-		variableSearchService = module.variableSearchService;
+		const mockRpcServer = {
+			notify: (...args: unknown[]) => mockNotify(...args),
+		};
+		variableSearchService = new VariableSearchService(mockRpcServer as never);
 	});
 
 	afterEach(() => {
@@ -84,7 +80,7 @@ describe('VariableSearchService', () => {
 	describe('async generator traversal', () => {
 		test('traverses deep narrow trees without blocking', async () => {
 			let current: SceneNode = createMockNode('leaf', 'Leaf', 'RECTANGLE', {
-				boundVariables: { fills: { id: 'var-1' } },
+				boundVariables: { fills: { type: 'VARIABLE_ALIAS', id: 'var-1' } },
 			});
 
 			for (let i = 0; i < 50; i++) {
@@ -129,7 +125,7 @@ describe('VariableSearchService', () => {
 			for (let i = 0; i < 500; i++) {
 				children.push(
 					createMockNode(`node-${i}`, `Node ${i}`, 'RECTANGLE', {
-						boundVariables: { fills: { id: 'var-1' } },
+						boundVariables: { fills: { type: 'VARIABLE_ALIAS', id: 'var-1' } },
 					}),
 				);
 			}
@@ -168,7 +164,7 @@ describe('VariableSearchService', () => {
 			for (let i = 0; i < 120; i++) {
 				children.push(
 					createMockNode(`node-${i}`, `Node ${i}`, 'RECTANGLE', {
-						boundVariables: { fills: { id: 'var-1' } },
+						boundVariables: { fills: { type: 'VARIABLE_ALIAS', id: 'var-1' } },
 					}),
 				);
 			}
@@ -212,7 +208,7 @@ describe('VariableSearchService', () => {
 			for (let i = 0; i < 75; i++) {
 				children.push(
 					createMockNode(`node-${i}`, `Node ${i}`, 'RECTANGLE', {
-						boundVariables: { fills: { id: 'var-1' } },
+						boundVariables: { fills: { type: 'VARIABLE_ALIAS', id: 'var-1' } },
 					}),
 				);
 			}
@@ -403,7 +399,7 @@ describe('VariableSearchService', () => {
 			for (let i = 0; i < 10; i++) {
 				siblings.push(
 					createMockNode(`sibling-${i}`, `Sibling ${i}`, 'RECTANGLE', {
-						boundVariables: { fills: { id: 'var-1' } },
+						boundVariables: { fills: { type: 'VARIABLE_ALIAS', id: 'var-1' } },
 						parent: parentFrame,
 					}),
 				);

@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { usePluginStore } from '@/store/plugin-store';
 import { useShallow } from 'zustand/react/shallow';
-import { rpcClient } from '@/lib/rpc-client';
+import { rpcClient } from '@/lib/call-plugin';
 import { PluginContext, type PluginContextValue } from '@/context/plugin-context';
 
 export function PluginProvider({ children }: { children: React.ReactNode }) {

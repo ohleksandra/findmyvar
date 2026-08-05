@@ -1,10 +1,14 @@
+import type { RpcProcedureSchema, RpcNotificationSchema } from 'figma-plugin-rpc';
+
 export interface Variable {
 	id: string;
 	name: string;
-	resolvedType: 'BOOLEAN' | 'FLOAT' | 'STRING' | 'COLOR';
+	resolvedType: VariableResolvedType;
 	hiddenFromPublishing: boolean;
 	remote?: boolean;
 }
+
+export type VariableResolvedType = 'BOOLEAN' | 'FLOAT' | 'STRING' | 'COLOR';
 
 export type NodeType =
 	| 'BOOLEAN_OPERATION'
@@ -55,7 +59,7 @@ export interface SearchProgress {
 
 export type SearchScope = 'all-pages' | 'current-page' | 'selection';
 
-export interface RpcProcedureSchema {
+export interface PluginProcedures extends RpcProcedureSchema {
 	'get-variables': {
 		request: void;
 		response: { variables: Variable[] };
@@ -79,7 +83,7 @@ export interface RpcProcedureSchema {
 	};
 }
 
-export interface RpcNotificationSchema {
+export interface PluginNotifications extends RpcNotificationSchema {
 	'variableSearch.results': {
 		searchId: string;
 		results: VariableUsage[];
@@ -90,69 +94,9 @@ export interface RpcNotificationSchema {
 	'variableSearch.error': { searchId: string; error: string };
 }
 
-export type RpcProcedure = keyof RpcProcedureSchema;
-
-export type RpcNotification = keyof RpcNotificationSchema;
-
-export type RpcRequest<T extends RpcProcedure> = RpcProcedureSchema[T]['request'];
-
-export type RpcResponse<T extends RpcProcedure> = RpcProcedureSchema[T]['response'];
-
-export type RpcNotificationPayload<T extends RpcNotification> = RpcNotificationSchema[T];
-
-export interface RpcRequestMessage<T extends RpcProcedure = RpcProcedure> {
-	__rpc: true;
-	id: string;
-	procedure: T;
-	payload: RpcRequest<T>;
-}
-
-export type RpcResponseMessage<T extends RpcProcedure = RpcProcedure> =
-	| {
-			__rpc: true;
-			id: string;
-			procedure: T;
-			response: RpcResponse<T>;
-	  }
-	| {
-			__rpc: true;
-			id: string;
-			procedure: T;
-			error: string;
-	  };
-
-export interface RpcNotificationMessage<T extends RpcNotification = RpcNotification> {
-	__rpcNotification: true;
-	notification: T;
-	payload: RpcNotificationPayload<T>;
-}
-
-export function isRpcRequest(msg: unknown): msg is RpcRequestMessage {
-	return (
-		typeof msg === 'object' &&
-		msg !== null &&
-		'__rpc' in msg &&
-		(msg as Record<string, unknown>).__rpc === true &&
-		'procedure' in msg &&
-		'payload' in msg
-	);
-}
-
-export function isRpcResponse(msg: unknown): msg is RpcResponseMessage {
-	return (
-		typeof msg === 'object' &&
-		msg !== null &&
-		'__rpc' in msg &&
-		(msg as Record<string, unknown>).__rpc === true &&
-		('response' in msg || 'error' in msg)
-	);
-}
-
-export function isRpcNotification(msg: unknown): msg is RpcNotificationMessage {
-	return (
-		typeof msg === 'object' &&
-		msg !== null &&
-		'__rpcNotification' in msg &&
-		(msg as Record<string, unknown>).__rpcNotification === true
-	);
-}
+export type SearchNotifier = {
+	notify<T extends keyof PluginNotifications & string>(
+		notification: T,
+		payload: PluginNotifications[T],
+	): void;
+};
