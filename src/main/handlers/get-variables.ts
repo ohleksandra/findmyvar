@@ -1,6 +1,7 @@
 import type { Variable } from '../../shared/rpc-types';
+import type { HandlerMap } from './types';
 
-export async function getVariablesHandler(): Promise<{ variables: Variable[] }> {
+async function getVariablesHandler(): Promise<{ variables: Variable[] }> {
 	const variablesFromFigma = await figma.variables.getLocalVariablesAsync();
 
 	const localVariables = variablesFromFigma.map((variable) => ({
@@ -13,4 +14,8 @@ export async function getVariablesHandler(): Promise<{ variables: Variable[] }> 
 	}));
 
 	return { variables: localVariables };
+}
+
+export function getVariablesHandlers(): HandlerMap {
+	return { 'get-variables': getVariablesHandler };
 }

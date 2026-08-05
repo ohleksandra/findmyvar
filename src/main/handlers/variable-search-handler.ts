@@ -1,39 +1,26 @@
-import type { RpcServer } from 'figma-plugin-rpc';
-import type { PluginProcedures, PluginNotifications } from '../../shared/rpc-types';
-import { VariableSearchService } from '../services/variableSearchService';
+import type { PluginProcedures } from '../../shared/rpc-types';
+import type { HandlerMap, HandlerDeps } from './types';
 
-export function registerVariableSearchHandlers(
-	rpcServer: RpcServer<PluginProcedures, PluginNotifications>,
-	variableSearchService: VariableSearchService,
-): void {
-	rpcServer.registerHandler('variableSearch.start', (payload) => {
-		void variableSearchService.search(payload.variableId, payload.scope, payload.searchId);
-		return { started: true };
-	});
+export function variableSearchHandlers(deps: HandlerDeps): HandlerMap {
+	const { variableSearchService } = deps;
 
-	rpcServer.registerHandler('variableSearch.cancel', async () => {
-		variableSearchService.cancelSearch();
-		return { cancelled: true };
-	});
+	type StartPayload = PluginProcedures['variableSearch.start']['request'];
+	type ClearCachePayload = PluginProcedures['variableSearch.clearCache']['request'];
 
-	rpcServer.registerHandler('variableSearch.clearCache', (payload) => {
-		variableSearchService.clearCache(payload && payload.variableId);
-		return { cleared: true };
-	});
+	return {
+		'variableSearch.start': (payload: StartPayload) => {
+			void variableSearchService.search(payload.variableId, payload.scope, payload.searchId);
+			return { started: true };
+		},
 
-	rpcServer.registerHandler('variableSearch.navigateTo', async (payload) => {
-		const { nodeId, pageId } = payload;
-		const page = (await figma.getNodeByIdAsync(pageId)) as PageNode | null;
-		const node = (await figma.getNodeByIdAsync(nodeId)) as SceneNode | null;
+		'variableSearch.cancel': async () => {
+			variableSearchService.cancelSearch();
+			return { cancelled: true };
+		},
 
-		if (!page || !node) {
-			return { success: false, error: 'Node not found' };
-		}
-
-		await figma.setCurrentPageAsync(page);
-		figma.viewport.scrollAndZoomIntoView([node]);
-		figma.currentPage.selection = [node];
-
-		return { success: true };
-	});
+		'variableSearch.clearCache': (payload: ClearCachePayload) => {
+			variableSearchService.clearCache(payload && payload.variableId);
+			return { cleared: true };
+		},
+	};
 }

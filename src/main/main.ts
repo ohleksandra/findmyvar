@@ -1,6 +1,5 @@
 import { createRpcServer, FigmaMainTransport } from 'figma-plugin-rpc';
-import { registerVariableSearchHandlers } from './handlers/variable-search-handler';
-import { getVariablesHandler } from './handlers/get-variables';
+import { registerAllHandlers } from './handlers';
 import { logger } from '../shared/logger';
 import { VariableSearchService } from './services/variableSearchService';
 import type { PluginProcedures, PluginNotifications } from '../shared/rpc-types';
@@ -17,8 +16,6 @@ export default function () {
 
 	logger.log('[Plugin] Initialized');
 
-	rpcServer.registerHandler('get-variables', getVariablesHandler);
-	registerVariableSearchHandlers(rpcServer, variableSearchService);
-
+	registerAllHandlers(rpcServer, { variableSearchService });
 	rpcServer.start();
 }

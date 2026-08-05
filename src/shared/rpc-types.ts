@@ -91,3 +91,10 @@ export interface PluginNotifications extends RpcNotificationSchema {
 	'variableSearch.progress': SearchProgress & { searchId: string };
 	'variableSearch.error': { searchId: string; error: string };
 }
+
+export type SearchNotifier = {
+	notify<T extends keyof PluginNotifications & string>(
+		notification: T,
+		payload: PluginNotifications[T],
+	): void;
+};
