@@ -4,6 +4,7 @@ import './styles.css';
 import App from './App';
 import { rpcClient } from './lib/call-plugin';
 import { PluginProvider } from './components/plugin-provider';
+import ErrorBoundary from './components/error-boundary';
 
 rpcClient.init();
 
@@ -13,8 +14,10 @@ window.addEventListener('beforeunload', () => {
 
 createRoot(document.getElementById('app')!).render(
 	<StrictMode>
-		<PluginProvider>
-			<App />
-		</PluginProvider>
+		<ErrorBoundary>
+			<PluginProvider>
+				<App />
+			</PluginProvider>
+		</ErrorBoundary>
 	</StrictMode>,
 );
