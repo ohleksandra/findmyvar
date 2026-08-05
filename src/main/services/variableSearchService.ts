@@ -1,6 +1,7 @@
 import { NodeType, SearchScope, VariableUsage } from '../../shared/rpc-types';
 import { formatDuration, logger } from '../../shared/logger';
 import type { SearchNotifier } from '../../shared/rpc-types';
+import { SCOPE_ALL_PAGES, SCOPE_CURRENT_PAGE, SCOPE_SELECTION } from '../../shared/constants';
 
 interface CacheEntry {
 	variableId: string;
@@ -96,7 +97,7 @@ class VariableSearchService {
 			return;
 		}
 
-		if (scope === 'selection' && figma.currentPage.selection.length === 0) {
+		if (scope === SCOPE_SELECTION && figma.currentPage.selection.length === 0) {
 			this.notifier.notify('variableSearch.results', {
 				searchId,
 				results: [],
@@ -234,7 +235,7 @@ class VariableSearchService {
 				results: allResults,
 				timestamp: Date.now(),
 				documentChangeCount: this.documentChangeCount,
-				selectionKey: scope === 'selection' ? this.getSelectionKey() : undefined,
+				selectionKey: scope === SCOPE_SELECTION ? this.getSelectionKey() : undefined,
 			});
 
 			logger.log(
@@ -369,11 +370,11 @@ class VariableSearchService {
 
 		if (isExpired || isStale) return false;
 
-		if (entry.scope === 'selection') {
+		if (entry.scope === SCOPE_SELECTION) {
 			return entry.selectionKey === this.getSelectionKey();
 		}
 
-		if (entry.scope === 'current-page') {
+		if (entry.scope === SCOPE_CURRENT_PAGE) {
 			const currentCacheKey = this.getCacheKey(entry.variableId, entry.scope);
 			const entryCacheKey = `${entry.variableId}:${entry.scope}:${figma.currentPage.id}`;
 			return currentCacheKey === entryCacheKey;
@@ -429,12 +430,12 @@ class VariableSearchService {
 	}
 
 	private getCacheKey(variableId: string, scope: SearchScope): string {
-		if (scope === 'selection') {
+		if (scope === SCOPE_SELECTION) {
 			const selectionKey = this.getSelectionKey();
 			return `${variableId}:${scope}:${selectionKey}`;
 		}
 
-		if (scope === 'current-page') {
+		if (scope === SCOPE_CURRENT_PAGE) {
 			return `${variableId}:${scope}:${figma.currentPage.id}`;
 		}
 
@@ -497,14 +498,14 @@ class VariableSearchService {
 
 	private async getSearchTargets(scope: SearchScope): Promise<SearchTarget[]> {
 		switch (scope) {
-			case 'all-pages':
+			case SCOPE_ALL_PAGES:
 				await figma.loadAllPagesAsync();
 				return figma.root.children.map((page) => ({
 					page,
 					topLevelNodes: page.children as SceneNode[],
 				}));
 
-			case 'current-page':
+			case SCOPE_CURRENT_PAGE:
 				return [
 					{
 						page: figma.currentPage,
@@ -512,7 +513,7 @@ class VariableSearchService {
 					},
 				];
 
-			case 'selection': {
+			case SCOPE_SELECTION: {
 				const selection = figma.currentPage.selection;
 				if (selection.length === 0) {
 					return [];

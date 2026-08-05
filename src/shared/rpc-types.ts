@@ -3,10 +3,12 @@ import type { RpcProcedureSchema, RpcNotificationSchema } from 'figma-plugin-rpc
 export interface Variable {
 	id: string;
 	name: string;
-	resolvedType: 'BOOLEAN' | 'FLOAT' | 'STRING' | 'COLOR';
+	resolvedType: VariableResolvedType;
 	hiddenFromPublishing: boolean;
 	remote?: boolean;
 }
+
+export type VariableResolvedType = 'BOOLEAN' | 'FLOAT' | 'STRING' | 'COLOR';
 
 export type NodeType =
 	| 'BOOLEAN_OPERATION'
