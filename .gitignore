@@ -64,8 +64,4 @@ findmyvar-v*.zip
 *.zip
 *.tgz
 
-# Playwright/Vitest artifacts
-test-results/
-playwright-report/
-
 overview.md
