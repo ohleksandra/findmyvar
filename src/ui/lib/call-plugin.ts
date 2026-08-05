@@ -5,7 +5,7 @@ export const rpcClient = createRpcClient<PluginProcedures, PluginNotifications>(
 	new FigmaUiTransport(),
 );
 
-export function callPlugin<T extends keyof PluginProcedures>(
+export function callPlugin<T extends keyof PluginProcedures & string>(
 	procedure: T,
 	...args: PluginProcedures[T]['request'] extends void
 		? [payload?: void, options?: { timeout?: number }]

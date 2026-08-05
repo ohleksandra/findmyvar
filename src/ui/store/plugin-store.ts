@@ -125,7 +125,7 @@ export const usePluginStore = create<PluginStore>()(
 
 			cancelSearch: async () => {
 				try {
-					await callPlugin('variableSearch.cancel', undefined as void);
+					await callPlugin('variableSearch.cancel');
 				} finally {
 					set({ isSearching: false, isSearchCompleted: true, activeSearchId: null });
 				}

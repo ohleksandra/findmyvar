@@ -80,7 +80,7 @@ describe('VariableSearchService', () => {
 	describe('async generator traversal', () => {
 		test('traverses deep narrow trees without blocking', async () => {
 			let current: SceneNode = createMockNode('leaf', 'Leaf', 'RECTANGLE', {
-				boundVariables: { fills: { id: 'var-1' } },
+				boundVariables: { fills: { type: 'VARIABLE_ALIAS', id: 'var-1' } },
 			});
 
 			for (let i = 0; i < 50; i++) {
@@ -125,7 +125,7 @@ describe('VariableSearchService', () => {
 			for (let i = 0; i < 500; i++) {
 				children.push(
 					createMockNode(`node-${i}`, `Node ${i}`, 'RECTANGLE', {
-						boundVariables: { fills: { id: 'var-1' } },
+						boundVariables: { fills: { type: 'VARIABLE_ALIAS', id: 'var-1' } },
 					}),
 				);
 			}
@@ -164,7 +164,7 @@ describe('VariableSearchService', () => {
 			for (let i = 0; i < 120; i++) {
 				children.push(
 					createMockNode(`node-${i}`, `Node ${i}`, 'RECTANGLE', {
-						boundVariables: { fills: { id: 'var-1' } },
+						boundVariables: { fills: { type: 'VARIABLE_ALIAS', id: 'var-1' } },
 					}),
 				);
 			}
@@ -208,7 +208,7 @@ describe('VariableSearchService', () => {
 			for (let i = 0; i < 75; i++) {
 				children.push(
 					createMockNode(`node-${i}`, `Node ${i}`, 'RECTANGLE', {
-						boundVariables: { fills: { id: 'var-1' } },
+						boundVariables: { fills: { type: 'VARIABLE_ALIAS', id: 'var-1' } },
 					}),
 				);
 			}
@@ -399,7 +399,7 @@ describe('VariableSearchService', () => {
 			for (let i = 0; i < 10; i++) {
 				siblings.push(
 					createMockNode(`sibling-${i}`, `Sibling ${i}`, 'RECTANGLE', {
-						boundVariables: { fills: { id: 'var-1' } },
+						boundVariables: { fills: { type: 'VARIABLE_ALIAS', id: 'var-1' } },
 						parent: parentFrame,
 					}),
 				);
