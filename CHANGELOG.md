@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/ohleksandra/findmyvar/compare/v1.1.2...v1.2.0) (2026-08-05)
+
+
+### Features
+
+* add React error boundaries for graceful failure recovery ([9b741b7](https://github.com/ohleksandra/findmyvar/commit/9b741b7b84b993db174c6637a0f15e21407b074a))
+
 ## [1.1.2](https://github.com/ohleksandra/findmyvar/compare/v1.1.1...v1.1.2) (2026-08-04)
 
 
