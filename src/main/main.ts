@@ -1,21 +1,24 @@
+import { createRpcServer, FigmaMainTransport } from 'figma-plugin-rpc';
 import { registerVariableSearchHandlers } from './handlers/variable-search-handler';
 import { getVariablesHandler } from './handlers/get-variables';
 import { logger } from '../shared/logger';
-import { rpcServer } from './lib/rpc-server';
-import { variableSearchService } from './services/variableSearchService';
+import { VariableSearchService } from './services/variableSearchService';
+import type { PluginProcedures, PluginNotifications } from '../shared/rpc-types';
 
 export default function () {
 	figma.showUI(__html__, { width: 538, height: 800, themeColors: true });
 
-	variableSearchService.init();
+	const rpcServer = createRpcServer<PluginProcedures, PluginNotifications>(
+		new FigmaMainTransport(),
+	);
+
+	const variableSearchService = new VariableSearchService(rpcServer);
+	void variableSearchService.init();
 
 	logger.log('[Plugin] Initialized');
 
 	rpcServer.registerHandler('get-variables', getVariablesHandler);
-	registerVariableSearchHandlers();
+	registerVariableSearchHandlers(rpcServer, variableSearchService);
 
-	figma.ui.onmessage = async (message) => {
-		const wasRpc = await rpcServer.processMessage(message);
-		if (wasRpc) return;
-	};
+	rpcServer.start();
 }

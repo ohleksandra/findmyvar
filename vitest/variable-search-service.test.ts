@@ -1,13 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { VariableUsage } from '../src/shared/rpc-types';
+import { VariableSearchService } from '../src/main/services/variableSearchService';
 
 const mockNotify = vi.fn();
-
-vi.mock('../src/main/lib/rpc-server', () => ({
-	rpcServer: {
-		notify: (...args: unknown[]) => mockNotify(...args),
-	},
-}));
 
 vi.mock('../src/shared/logger', () => ({
 	logger: {
@@ -65,15 +60,16 @@ function createMockPage(id: string, name: string, children: SceneNode[] = []): P
 }
 
 describe('VariableSearchService', () => {
-	let variableSearchService: typeof import('../src/main/services/variableSearchService').variableSearchService;
+	let variableSearchService: VariableSearchService;
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
-		vi.resetModules();
 		vi.useFakeTimers();
 
-		const module = await import('../src/main/services/variableSearchService');
-		variableSearchService = module.variableSearchService;
+		const mockRpcServer = {
+			notify: (...args: unknown[]) => mockNotify(...args),
+		};
+		variableSearchService = new VariableSearchService(mockRpcServer as never);
 	});
 
 	afterEach(() => {

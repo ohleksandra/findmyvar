@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 const mockCallPlugin = vi.fn();
 
-vi.mock('../src/ui/lib/rpc-client', () => ({
+vi.mock('../src/ui/lib/call-plugin', () => ({
 	callPlugin: (...args: unknown[]) => mockCallPlugin(...args),
 	rpcClient: {
 		on: vi.fn(() => vi.fn()),

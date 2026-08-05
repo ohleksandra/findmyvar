@@ -1,7 +1,11 @@
-import { rpcServer } from '../lib/rpc-server';
-import { variableSearchService } from '../services/variableSearchService';
+import type { RpcServer } from 'figma-plugin-rpc';
+import type { PluginProcedures, PluginNotifications } from '../../shared/rpc-types';
+import { VariableSearchService } from '../services/variableSearchService';
 
-export function registerVariableSearchHandlers(): void {
+export function registerVariableSearchHandlers(
+	rpcServer: RpcServer<PluginProcedures, PluginNotifications>,
+	variableSearchService: VariableSearchService,
+): void {
 	rpcServer.registerHandler('variableSearch.start', (payload) => {
 		void variableSearchService.search(payload.variableId, payload.scope, payload.searchId);
 		return { started: true };

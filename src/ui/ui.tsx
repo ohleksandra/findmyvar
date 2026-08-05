@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 import App from './App';
-import { rpcClient } from './lib/rpc-client';
+import { rpcClient } from './lib/call-plugin';
 import { PluginProvider } from './components/plugin-provider';
 
 rpcClient.init();

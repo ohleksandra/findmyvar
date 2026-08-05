@@ -2,7 +2,7 @@ import type { SearchScope, Variable, VariableUsage } from '../../shared/rpc-type
 import { DEFAULT_SCOPE } from '../../shared/constants';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { callPlugin } from '@/lib/rpc-client';
+import { callPlugin } from '@/lib/call-plugin';
 import type { SearchProgress } from '../../shared/rpc-types';
 import { nanoid } from 'nanoid';
 

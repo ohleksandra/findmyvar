@@ -1,6 +1,7 @@
 import { NodeType, SearchScope, VariableUsage } from '../../shared/rpc-types';
 import { formatDuration, logger } from '../../shared/logger';
-import { rpcServer } from '../lib/rpc-server';
+import type { RpcServer } from 'figma-plugin-rpc';
+import type { PluginProcedures, PluginNotifications } from '../../shared/rpc-types';
 
 interface CacheEntry {
 	variableId: string;
@@ -30,6 +31,11 @@ class VariableSearchService {
 	private isInitialized: boolean = false;
 	private pendingChangeTimer: ReturnType<typeof setTimeout> | null = null;
 	private pendingChangeHasRelevant: boolean = false;
+	private rpcServer: RpcServer<PluginProcedures, PluginNotifications>;
+
+	constructor(rpcServer: RpcServer<PluginProcedures, PluginNotifications>) {
+		this.rpcServer = rpcServer;
+	}
 
 	async init(): Promise<void> {
 		if (this.isInitialized) return;
@@ -79,7 +85,7 @@ class VariableSearchService {
 
 			await this.streamCachedResults(searchId, cached.results);
 
-			rpcServer.notify('variableSearch.progress', {
+			this.rpcServer.notify('variableSearch.progress', {
 				searchId,
 				processed: cached.results.length,
 				total: cached.results.length,
@@ -92,13 +98,13 @@ class VariableSearchService {
 		}
 
 		if (scope === 'selection' && figma.currentPage.selection.length === 0) {
-			rpcServer.notify('variableSearch.results', {
+			this.rpcServer.notify('variableSearch.results', {
 				searchId,
 				results: [],
 				isComplete: true,
 			});
 
-			rpcServer.notify('variableSearch.progress', {
+			this.rpcServer.notify('variableSearch.progress', {
 				searchId,
 				processed: 0,
 				total: 0,
@@ -168,7 +174,7 @@ class VariableSearchService {
 						}
 
 						if (pendingResults.length >= RESULTS_BATCH_SIZE) {
-							rpcServer.notify('variableSearch.results', {
+							this.rpcServer.notify('variableSearch.results', {
 								searchId,
 								results: pendingResults,
 								isComplete: false,
@@ -179,7 +185,7 @@ class VariableSearchService {
 						nodesProcessed++;
 
 						if (nodesProcessed % NODES_PER_PROGRESS === 0) {
-							rpcServer.notify('variableSearch.progress', {
+							this.rpcServer.notify('variableSearch.progress', {
 								searchId,
 								processed: processedTopLevelNodes,
 								total: totalTopLevelNodes,
@@ -191,7 +197,7 @@ class VariableSearchService {
 
 					processedTopLevelNodes++;
 
-					rpcServer.notify('variableSearch.progress', {
+					this.rpcServer.notify('variableSearch.progress', {
 						searchId,
 						processed: processedTopLevelNodes,
 						total: totalTopLevelNodes,
@@ -202,20 +208,20 @@ class VariableSearchService {
 			}
 
 			if (pendingResults.length > 0) {
-				rpcServer.notify('variableSearch.results', {
+				this.rpcServer.notify('variableSearch.results', {
 					searchId,
 					results: pendingResults,
 					isComplete: false,
 				});
 			}
 
-			rpcServer.notify('variableSearch.results', {
+			this.rpcServer.notify('variableSearch.results', {
 				searchId,
 				results: [],
 				isComplete: true,
 			});
 
-			rpcServer.notify('variableSearch.progress', {
+			this.rpcServer.notify('variableSearch.progress', {
 				searchId,
 				processed: totalTopLevelNodes,
 				total: totalTopLevelNodes,
@@ -237,7 +243,7 @@ class VariableSearchService {
 			);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Unknown error';
-			rpcServer.notify('variableSearch.error', { searchId, error: message });
+			this.rpcServer.notify('variableSearch.error', { searchId, error: message });
 		} finally {
 			figma.skipInvisibleInstanceChildren = previousSkipInvisible;
 			if (this.activeSearchId === searchId) {
@@ -292,7 +298,7 @@ class VariableSearchService {
 			const batch = results.slice(i, i + RESULTS_BATCH_SIZE);
 			const isLast = i + RESULTS_BATCH_SIZE >= results.length;
 
-			rpcServer.notify('variableSearch.results', {
+			this.rpcServer.notify('variableSearch.results', {
 				searchId,
 				results: batch,
 				isComplete: isLast,
@@ -305,7 +311,7 @@ class VariableSearchService {
 		}
 
 		if (results.length === 0) {
-			rpcServer.notify('variableSearch.results', {
+			this.rpcServer.notify('variableSearch.results', {
 				searchId,
 				results: [],
 				isComplete: true,
@@ -527,4 +533,4 @@ class VariableSearchService {
 	}
 }
 
-export const variableSearchService = new VariableSearchService();
+export { VariableSearchService };
