@@ -30,6 +30,7 @@ export default function () {
 		try {
 			return await ctx.next();
 		} catch (error) {
+			logger.error(`[RPC] error in ${ctx.procedure}:`, error);
 			if (error instanceof RpcError) throw error;
 			const message = error instanceof Error ? error.message : String(error);
 			throw new RpcError('INTERNAL', message);
@@ -39,8 +40,11 @@ export default function () {
 	const timingThresholdMs = 500;
 	const timing: RpcMiddleware = async (ctx) => {
 		const start = Date.now();
+		logger.log(`[RPC] → ${ctx.procedure}`);
 		try {
-			return await ctx.next();
+			const result = await ctx.next();
+			logger.log(`[RPC] ← ${ctx.procedure} (${formatDuration(Date.now() - start)})`);
+			return result;
 		} finally {
 			const duration = Date.now() - start;
 			if (duration > timingThresholdMs) {
