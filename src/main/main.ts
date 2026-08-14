@@ -26,9 +26,9 @@ const validators: Record<string, z.ZodType> = {
 export default function () {
 	figma.showUI(__html__, { width: 538, height: 800, themeColors: true });
 
-	const errorNormalizer: RpcMiddleware = async (ctx, next) => {
+	const errorNormalizer: RpcMiddleware = async (ctx) => {
 		try {
-			return await next();
+			return await ctx.next();
 		} catch (error) {
 			if (error instanceof RpcError) throw error;
 			const message = error instanceof Error ? error.message : String(error);
@@ -37,10 +37,10 @@ export default function () {
 	};
 
 	const timingThresholdMs = 500;
-	const timing: RpcMiddleware = async (ctx, next) => {
+	const timing: RpcMiddleware = async (ctx) => {
 		const start = Date.now();
 		try {
-			return await next();
+			return await ctx.next();
 		} finally {
 			const duration = Date.now() - start;
 			if (duration > timingThresholdMs) {
@@ -49,7 +49,7 @@ export default function () {
 		}
 	};
 
-	const validation: RpcMiddleware = async (ctx, next) => {
+	const validation: RpcMiddleware = async (ctx) => {
 		const schema = validators[ctx.procedure];
 		if (schema) {
 			const result = schema.safeParse(ctx.payload);
@@ -61,7 +61,7 @@ export default function () {
 				});
 			}
 		}
-		return next();
+		return ctx.next();
 	};
 
 	const rpcServer = createRpcServer<PluginProcedures, PluginNotifications>(
