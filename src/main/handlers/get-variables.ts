@@ -1,8 +1,11 @@
 import type { Variable } from '../../shared/rpc-types';
 import type { HandlerMap } from './types';
+import { logger } from '../../shared/logger';
 
 async function getVariablesHandler(): Promise<{ variables: Variable[] }> {
 	const variablesFromFigma = await figma.variables.getLocalVariablesAsync();
+
+	logger.log(`[get-variables] Found ${variablesFromFigma.length} variables`);
 
 	const localVariables = variablesFromFigma.map((variable) => ({
 		id: variable.id,

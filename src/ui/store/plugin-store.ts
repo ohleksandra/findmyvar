@@ -79,9 +79,14 @@ export const usePluginStore = create<PluginStore>()(
 			async getAllVariables() {
 				try {
 					const { variables } = await callPlugin('get-variables');
-
+					console.log(
+						'[UI] Received variables:',
+						variables.length,
+						variables.slice(0, 3),
+					);
 					set({ variables });
 				} catch (err) {
+					console.error('[UI] Failed to fetch variables:', err);
 					set({
 						error: err instanceof Error ? err.message : 'Failed to fetch variables',
 					});
