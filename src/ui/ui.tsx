@@ -6,6 +6,7 @@ import { rpcClient } from './lib/call-plugin';
 import { PluginProvider } from './components/plugin-provider';
 import ErrorBoundary from './components/error-boundary';
 
+console.log('[UI] ui.tsx loaded');
 rpcClient.init();
 
 window.addEventListener('beforeunload', () => {

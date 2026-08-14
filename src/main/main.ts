@@ -24,6 +24,7 @@ const validators: Record<string, z.ZodType> = {
 };
 
 export default function () {
+	console.log('[Plugin] main() started');
 	figma.showUI(__html__, { width: 538, height: 800, themeColors: true });
 
 	const errorNormalizer: RpcMiddleware = async (ctx) => {
