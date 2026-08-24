@@ -28,11 +28,11 @@
 	"devDependencies": {
 		"@commitlint/cli": "^20.4.0",
 		"@commitlint/config-conventional": "^20.4.0",
-		"@figma/plugin-typings": "^1.132.0",
+		"@figma/plugin-typings": "^1.134.0",
 		"@types/react": "^19.2.18",
 		"@types/react-dom": "^19.2.4",
 		"@vitejs/plugin-react": "^4.3.3",
-		"globals": "^17.8.0",
+		"globals": "^17.11.0",
 		"husky": "^9.1.7",
 		"lint-staged": "^16.2.7",
 		"plugma": "^2.2.4",
@@ -54,13 +54,13 @@
 		"@radix-ui/react-tabs": "^1.1.21",
 		"@radix-ui/react-tooltip": "^1.2.16",
 		"@tailwindcss/vite": "^4.3.3",
-		"@tanstack/react-virtual": "3.14.9",
-		"@typescript-eslint/parser": "^8.65.0",
+		"@tanstack/react-virtual": "3.14.10",
+		"@typescript-eslint/parser": "^8.67.0",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"cmdk": "^1.1.1",
-		"eslint": "^10.8.0",
-		"figma-plugin-rpc": "1.0.0",
+		"eslint": "^10.8.1",
+		"figma-plugin-rpc": "1.2.0",
 		"lucide-react": "^0.556.0",
 		"motion": "^12.43.0",
 		"nanoid": "^5.1.6",
@@ -69,8 +69,8 @@
 		"react-dom": "^19.2.8",
 		"tailwind-merge": "^3.6.0",
 		"tailwindcss": "^4.1.18",
-		"typescript-eslint": "^8.65.0",
-		"vitest": "^4.0.0",
-		"zustand": "^5.0.14"
+		"typescript-eslint": "^8.67.0",
+		"vitest": "^4.1.11",
+		"zustand": "^5.0.15"
 	}
 }
