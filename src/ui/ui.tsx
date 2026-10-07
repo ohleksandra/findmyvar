@@ -6,10 +6,10 @@ import { rpcClient } from './lib/call-plugin';
 import { PluginProvider } from './components/plugin-provider';
 import ErrorBoundary from './components/error-boundary';
 
-rpcClient.init();
+rpcClient.start();
 
 window.addEventListener('beforeunload', () => {
-	rpcClient.destroy();
+	rpcClient.stop();
 });
 
 createRoot(document.getElementById('app')!).render(
