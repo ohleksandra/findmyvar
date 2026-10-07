@@ -25,6 +25,17 @@ const SearchPane = () => {
 		state.searchResults.length,
 	);
 
+	if (state.error && !state.isSearching && state.searchResults.length === 0) {
+		return (
+			<div className="flex flex-col w-full h-full justify-center items-center px-6">
+				<div className="flex flex-col justify-center gap-y-2 max-w-79.5 items-center">
+					<p className="font-medium text-nowrap">Something went wrong</p>
+					<p className="text-center leading-5 text-sm break-words">{state.error}</p>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="flex flex-col overflow-y-auto z-10">
 			{status === 'searching' && <ProgressPane />}
