@@ -26,7 +26,7 @@
 		]
 	},
 	"devDependencies": {
-		"@commitlint/cli": "^20.4.0",
+		"@commitlint/cli": "^21.2.3",
 		"@commitlint/config-conventional": "^20.4.0",
 		"@figma/plugin-typings": "^1.140.0",
 		"@types/react": "^19.3.0",
