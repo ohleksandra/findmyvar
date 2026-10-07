@@ -68,4 +68,37 @@ describe('rpc round-trip (diagnostic)', () => {
 		server.stop();
 		vi.unstubAllGlobals();
 	});
+
+	test('server notifications stream incrementally in order', async () => {
+		const { ui, main } = loopbackPair();
+		const server = createRpcServer<PluginProcedures, PluginNotifications>(main);
+		server.start();
+
+		const client = createRpcClient<PluginProcedures, PluginNotifications>(ui);
+		client.start();
+
+		const received: Array<{ results: unknown[]; isComplete: boolean }> = [];
+		client.on('variableSearch.results', (p) => {
+			received.push({ results: p.results, isComplete: p.isComplete });
+		});
+
+		for (let i = 0; i < 3; i++) {
+			server.notify('variableSearch.results', {
+				searchId: 's1',
+				results: [{ nodeId: `n${i}` }],
+				isComplete: false,
+			});
+		}
+		server.notify('variableSearch.results', {
+			searchId: 's1',
+			results: [],
+			isComplete: true,
+		});
+
+		expect(received).toHaveLength(4);
+		expect(received[3].isComplete).toBe(true);
+
+		client.stop();
+		server.stop();
+	});
 });
