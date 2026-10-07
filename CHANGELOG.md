@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.1](https://github.com/ohleksandra/findmyvar/compare/v1.2.0...v1.2.1) (2026-10-07)
+
+
+### Bug Fixes
+
+* support EASING and TIMING variable types ([ed09bfe](https://github.com/ohleksandra/findmyvar/commit/ed09bfea8c6317e8c9c21309f1af35a032027940))
+* support EASING and TIMING variable types from updated Figma typings ([b2d7047](https://github.com/ohleksandra/findmyvar/commit/b2d7047673b43ccd356b426c820deafd6c5bdd27))
+* **ui:** show partial results while search is in progress ([bb27070](https://github.com/ohleksandra/findmyvar/commit/bb27070089be0182963de925b66ab1b898af06df))
+* **ui:** show partial results while search is in progress ([61e51a0](https://github.com/ohleksandra/findmyvar/commit/61e51a0d1d870e9617911d0cf6d5efc848c56561))
+* **ui:** surface store errors instead of silent empty state ([ff00b59](https://github.com/ohleksandra/findmyvar/commit/ff00b598c46b78fc7dd4e8bb1de161639cc17763))
+* **ui:** surface store errors instead of silent empty state ([1a2070b](https://github.com/ohleksandra/findmyvar/commit/1a2070bbe1a26b804cf730e579581267f6cde99e))
+
 ## [1.2.0](https://github.com/ohleksandra/findmyvar/compare/v1.1.2...v1.2.0) (2026-08-05)
 
 
