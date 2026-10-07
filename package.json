@@ -26,15 +26,15 @@
 		]
 	},
 	"devDependencies": {
-		"@commitlint/cli": "^20.4.0",
-		"@commitlint/config-conventional": "^20.4.0",
+		"@commitlint/cli": "^21.2.3",
+		"@commitlint/config-conventional": "^21.2.3",
 		"@figma/plugin-typings": "^1.140.0",
 		"@types/react": "^19.3.0",
 		"@types/react-dom": "^19.3.0",
 		"@vitejs/plugin-react": "^4.3.3",
 		"globals": "^17.13.0",
 		"husky": "^9.1.7",
-		"lint-staged": "^16.2.7",
+		"lint-staged": "^17.6.0",
 		"plugma": "^2.2.4",
 		"shadcn-ui": "^0.9.5",
 		"tslib": "^2.8.0",
@@ -70,7 +70,7 @@
 		"tailwind-merge": "^3.7.0",
 		"tailwindcss": "^4.1.18",
 		"typescript-eslint": "^8.71.0",
-		"vitest": "^4.0.0",
+		"vitest": "^5.0.3",
 		"zustand": "^5.0.15"
 	}
 }
