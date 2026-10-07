@@ -3,8 +3,10 @@ import type { Variable } from '../../shared/rpc-types';
 import {
 	VARIABLE_TYPE_BOOLEAN,
 	VARIABLE_TYPE_COLOR,
+	VARIABLE_TYPE_EASING,
 	VARIABLE_TYPE_FLOAT,
 	VARIABLE_TYPE_STRING,
+	VARIABLE_TYPE_TIMING,
 } from '../../shared/constants';
 import BooleanIcon from './icons/var-types/boolean-icon';
 import NumericIcon from './icons/var-types/numeric-icon';
@@ -20,6 +22,9 @@ const VARIABLE_TYPE_ICON_MAP: Record<string, React.ComponentType<React.SVGProps<
 	[VARIABLE_TYPE_FLOAT]: NumericIcon,
 	[VARIABLE_TYPE_STRING]: TextIcon,
 	[VARIABLE_TYPE_COLOR]: ColorIcon,
+	// Figma added EASING/TIMING in @figma/plugin-typings 1.133+. No dedicated icons yet; reuse closest matches.
+	[VARIABLE_TYPE_EASING]: NumericIcon,
+	[VARIABLE_TYPE_TIMING]: NumericIcon,
 };
 
 const VariableTypeIcon = (props: VariableTypeIcon) => {
