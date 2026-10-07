@@ -38,9 +38,9 @@ const SearchPane = () => {
 
 	return (
 		<div className="flex flex-col overflow-y-auto z-10">
-			{status === 'searching' && <ProgressPane />}
+			{state.isSearching && <ProgressPane />}
+			{state.searchResults.length > 0 && <SearchResult />}
 			{status === 'idle' && <Intro />}
-			{status === 'has-results' && <SearchResult />}
 			{status === 'empty' && <NoResults />}
 		</div>
 	);
