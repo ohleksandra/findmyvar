@@ -8,7 +8,7 @@ export interface Variable {
 	remote?: boolean;
 }
 
-export type VariableResolvedType = 'BOOLEAN' | 'FLOAT' | 'STRING' | 'COLOR';
+export type VariableResolvedType = 'BOOLEAN' | 'FLOAT' | 'STRING' | 'COLOR' | 'EASING' | 'TIMING';
 
 export type NodeType =
 	| 'BOOLEAN_OPERATION'

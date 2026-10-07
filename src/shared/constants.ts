@@ -10,3 +10,5 @@ export const VARIABLE_TYPE_BOOLEAN: VariableResolvedType = 'BOOLEAN';
 export const VARIABLE_TYPE_FLOAT: VariableResolvedType = 'FLOAT';
 export const VARIABLE_TYPE_STRING: VariableResolvedType = 'STRING';
 export const VARIABLE_TYPE_COLOR: VariableResolvedType = 'COLOR';
+export const VARIABLE_TYPE_EASING: VariableResolvedType = 'EASING';
+export const VARIABLE_TYPE_TIMING: VariableResolvedType = 'TIMING';
