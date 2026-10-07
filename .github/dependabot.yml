@@ -19,6 +19,11 @@ updates:
     ignore:
       - dependency-name: 'shadcn-ui'
         # CLI tool, regenerated on demand; auto-bumps break local installs
+      - dependency-name: 'vite'
+        update-types: ['version-update:semver-major']
+        # Vite 8 requires @vitejs/plugin-react >=5 and plugma with Vite 8 support.
+        # plugma 2.2.4 peers vite ^7 only, so `npm ci` ERESOLVEs on vite 8.
+        # Revisit when plugma supports vite 8; then also bump @vitejs/plugin-react to ^5.
     commit-message:
       prefix: 'chore(deps)'
     labels:
