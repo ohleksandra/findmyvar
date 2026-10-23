@@ -46,7 +46,7 @@ async function freshStore() {
 
 async function storeWithResult() {
 	const useUnusedStore = await freshStore();
-	useUnusedStore.setState({ isOpen: true, status: 'done', result });
+	useUnusedStore.setState({ isOpen: true, status: 'done', result, resultScanId: 'scan-1' });
 	return useUnusedStore;
 }
 
@@ -112,7 +112,11 @@ describe('useUnusedStore', () => {
 		const useUnusedStore = await storeWithResult();
 		mockCallPlugin.mockImplementation(async (procedure: string) =>
 			procedure === 'unusedScan.delete'
-				? { deletedIds: ['button-bg', 'card-bg', 'brand-bg'], versionSaved: true }
+				? {
+						deletedIds: ['button-bg', 'card-bg', 'brand-bg'],
+						skippedIds: [],
+						versionSaved: true,
+					}
 				: { variables: [] },
 		);
 		useUnusedStore.setState({ selectedIds: ['button-bg', 'card-bg', 'old/divider'] });
@@ -124,6 +128,7 @@ describe('useUnusedStore', () => {
 		await useUnusedStore.getState().confirmDelete(['brand-bg']);
 
 		expect(mockCallPlugin).toHaveBeenCalledWith('unusedScan.delete', {
+			scanId: 'scan-1',
 			ids: ['button-bg', 'card-bg', 'brand-bg'],
 		});
 		expect(useUnusedStore.getState().deleteStatus).toBe('done');
@@ -131,11 +136,17 @@ describe('useUnusedStore', () => {
 		expect(useUnusedStore.getState().selectedIds).toEqual(['old/divider']);
 	});
 
-	test('a failed delete keeps the dialog open with the error', async () => {
+	test('a STALE refusal keeps the dialog open and marks the results out of date', async () => {
 		const useUnusedStore = await storeWithResult();
-		mockCallPlugin.mockRejectedValue(
-			new Error('The file changed since the scan. Rescan before deleting.'),
-		);
+		mockCallPlugin.mockResolvedValue({
+			deletedIds: [],
+			skippedIds: [],
+			versionSaved: false,
+			error: {
+				code: 'STALE',
+				message: 'The file changed since the scan. Rescan before deleting.',
+			},
+		});
 		useUnusedStore.getState().requestDeleteOne('old/divider');
 
 		await useUnusedStore.getState().confirmDelete();
@@ -144,6 +155,58 @@ describe('useUnusedStore', () => {
 		expect(state.deleteStatus).toBe('confirming');
 		expect(state.deleteError).toContain('Rescan');
 		expect(state.isStale).toBe(true);
+	});
+
+	test('a partial delete drops what was deleted and marks the results out of date', async () => {
+		const useUnusedStore = await storeWithResult();
+		mockCallPlugin.mockImplementation(async (procedure: string) =>
+			procedure === 'unusedScan.delete'
+				? {
+						deletedIds: ['button-bg'],
+						skippedIds: [],
+						versionSaved: true,
+						error: {
+							code: 'PARTIAL',
+							message: 'Deleted 1 of 3 variables, then stopped',
+						},
+					}
+				: { variables: [] },
+		);
+		useUnusedStore.setState({ selectedIds: ['brand-bg', 'button-bg', 'card-bg'] });
+		useUnusedStore.getState().requestDelete();
+
+		await useUnusedStore.getState().confirmDelete();
+
+		const state = useUnusedStore.getState();
+		expect(state.deleteStatus).toBe('confirming');
+		expect(state.deleteError).toContain('Deleted 1 of 3');
+		expect(state.isStale).toBe(true);
+		expect(state.selectedIds).toEqual(['brand-bg', 'card-bg']);
+		expect(state.deleteTargetIds).toEqual(['brand-bg', 'card-bg']);
+		// Refreshes the variable list, which no longer has button-bg.
+		expect(mockCallPlugin).toHaveBeenCalledWith('get-variables');
+	});
+
+	test('a request that fails to reach the plugin shows the error without marking results stale', async () => {
+		const useUnusedStore = await storeWithResult();
+		mockCallPlugin.mockRejectedValue(new Error('RPC call timed out'));
+		useUnusedStore.getState().requestDeleteOne('old/divider');
+
+		await useUnusedStore.getState().confirmDelete();
+
+		const state = useUnusedStore.getState();
+		expect(state.deleteStatus).toBe('confirming');
+		expect(state.deleteError).toBe('RPC call timed out');
+		expect(state.isStale).toBe(false);
+	});
+
+	test('a finished scan remembers its id for deleting', async () => {
+		const useUnusedStore = await freshStore();
+		useUnusedStore.setState({ activeScanId: 'scan-7', status: 'scanning' });
+
+		useUnusedStore.getState()._complete('scan-7', result);
+
+		expect(useUnusedStore.getState().resultScanId).toBe('scan-7');
 	});
 
 	test('deleting one variable targets it and what points to it, not the selection', async () => {

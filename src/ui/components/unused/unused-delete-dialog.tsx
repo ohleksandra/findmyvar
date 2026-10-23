@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useUnusedStore } from '@/store/unused-store';
+import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import { Spinner } from '../ui/spinner';
@@ -29,6 +30,7 @@ const UnusedDeleteDialog = () => {
 	const selectedIds = useUnusedStore((s) => s.deleteTargetIds);
 	const deleteStatus = useUnusedStore((s) => s.deleteStatus);
 	const deleteError = useUnusedStore((s) => s.deleteError);
+	const isStale = useUnusedStore((s) => s.isStale);
 	const cancelDelete = useUnusedStore((s) => s.cancelDelete);
 	const confirmDelete = useUnusedStore((s) => s.confirmDelete);
 	const [alsoDelete, setAlsoDelete] = useState<string[]>([]);
@@ -131,9 +133,9 @@ const UnusedDeleteDialog = () => {
 					</Button>
 					<Button
 						variant="destructive"
-						// Only disabled while deleting: stay red so it reads as busy, not unavailable.
-						className="disabled:bg-destructive"
-						disabled={isDeleting}
+						// While deleting, stay red so it reads as busy. Out-of-date results need a rescan.
+						className={cn(isDeleting && 'disabled:bg-destructive')}
+						disabled={isDeleting || isStale}
 						onClick={async () => {
 							await confirmDelete(alsoDelete);
 							setAlsoDelete([]);

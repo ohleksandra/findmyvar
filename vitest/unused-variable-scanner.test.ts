@@ -323,9 +323,7 @@ describe('UnusedVariableScanner', () => {
 			});
 
 			expect(mockNotify).toHaveBeenCalledWith('unusedScan.stale', { scanId: 'scan-1' });
-			await expect(scanner.deleteVariables(['old-bg'])).rejects.toThrow(
-				'changed since the scan',
-			);
+			expect((await scanner.deleteVariables('scan-1', ['old-bg'])).error?.code).toBe('STALE');
 		});
 
 		test('ignores binding a variable the scan already counted as used', async () => {
@@ -529,9 +527,7 @@ describe('UnusedVariableScanner', () => {
 
 			expect(unusedIds()).toEqual(['late']);
 			expect(staleNotices()).toBe(1);
-			await expect(scanner.deleteVariables(['late'])).rejects.toThrow(
-				'changed since the scan',
-			);
+			expect((await scanner.deleteVariables('scan-1', ['late'])).error?.code).toBe('STALE');
 			expect(vars[0].remove).not.toHaveBeenCalled();
 		});
 
@@ -547,7 +543,7 @@ describe('UnusedVariableScanner', () => {
 				return { id: 'v1' };
 			});
 
-			await expect(scanner.deleteVariables(['v'])).rejects.toThrow('changed since the scan');
+			expect((await scanner.deleteVariables('scan-1', ['v'])).error?.code).toBe('STALE');
 			expect(vars[0].remove).not.toHaveBeenCalled();
 		});
 
@@ -644,7 +640,7 @@ describe('UnusedVariableScanner', () => {
 				}),
 			).not.toThrow();
 			expect(staleNotices()).toBe(1);
-			await expect(scanner.deleteVariables(['v'])).rejects.toThrow('changed since the scan');
+			expect((await scanner.deleteVariables('scan-1', ['v'])).error?.code).toBe('STALE');
 		});
 
 		test('a change that cannot be read during the scan makes its result out of date', async () => {
@@ -843,14 +839,17 @@ describe('UnusedVariableScanner', () => {
 			return { vars, ...figmaMock };
 		}
 
+		const GROUP = ['brand-bg', 'button-bg', 'card-bg'];
+
 		test('saves a version, then deletes the variable with everything that points to it', async () => {
 			const { vars, mockFigma } = groupFixture();
 			await scanner.scan('scan-1');
 
-			const result = await scanner.deleteVariables(['brand-bg']);
+			const result = await scanner.deleteVariables('scan-1', GROUP);
 
+			expect(result.error).toBeUndefined();
 			expect(result.versionSaved).toBe(true);
-			expect([...result.deletedIds].sort()).toEqual(['brand-bg', 'button-bg', 'card-bg']);
+			expect([...result.deletedIds].sort()).toEqual(GROUP);
 			expect(mockFigma.saveVersionHistoryAsync).toHaveBeenCalledBefore(vars[0].remove);
 			// The variables pointing to brand-bg go first, so nothing is left dangling.
 			expect(result.deletedIds[result.deletedIds.length - 1]).toBe('brand-bg');
@@ -858,13 +857,23 @@ describe('UnusedVariableScanner', () => {
 			expect(mockFigma.commitUndo).toHaveBeenCalled();
 		});
 
-		test('never deletes a variable that is used', async () => {
+		test('deletes only what was sent: a variable without the ones pointing to it is refused', async () => {
 			const { vars } = groupFixture();
 			await scanner.scan('scan-1');
 
-			const result = await scanner.deleteVariables(['in-use']);
+			const result = await scanner.deleteVariables('scan-1', ['brand-bg']);
 
-			expect(result.deletedIds).toEqual([]);
+			expect(result.error?.code).toBe('STALE');
+			vars.forEach((v) => expect(v.remove).not.toHaveBeenCalled());
+		});
+
+		test('keeps a variable that is used and reports it as skipped', async () => {
+			const { vars } = groupFixture();
+			await scanner.scan('scan-1');
+
+			const result = await scanner.deleteVariables('scan-1', ['in-use']);
+
+			expect(result).toEqual({ deletedIds: [], skippedIds: ['in-use'], versionSaved: false });
 			expect(vars[3].remove).not.toHaveBeenCalled();
 		});
 
@@ -874,9 +883,10 @@ describe('UnusedVariableScanner', () => {
 			// Someone points in-use at button-bg after the scan.
 			vars[3].valuesByMode = { m: ALIAS('button-bg') };
 
-			const result = await scanner.deleteVariables(['button-bg']);
+			const result = await scanner.deleteVariables('scan-1', ['button-bg']);
 
 			expect(result.deletedIds).toEqual([]);
+			expect(result.skippedIds).toEqual(['button-bg']);
 			expect(vars[1].remove).not.toHaveBeenCalled();
 		});
 
@@ -889,8 +899,75 @@ describe('UnusedVariableScanner', () => {
 				],
 			});
 
-			await expect(scanner.deleteVariables(['brand-bg'])).rejects.toThrow(
-				'Rescan before deleting',
+			const result = await scanner.deleteVariables('scan-1', GROUP);
+
+			expect(result.error).toEqual({
+				code: 'STALE',
+				message: 'The file changed since the scan. Rescan before deleting.',
+			});
+		});
+
+		test('refuses results from an older scan', async () => {
+			const { vars } = groupFixture();
+			await scanner.scan('scan-1');
+			await scanner.scan('scan-2');
+
+			expect((await scanner.deleteVariables('scan-1', GROUP)).error?.code).toBe('STALE');
+			expect(vars[0].remove).not.toHaveBeenCalled();
+		});
+
+		test('refuses to delete before any scan', async () => {
+			groupFixture();
+
+			expect((await scanner.deleteVariables('scan-1', GROUP)).error?.code).toBe(
+				'NOT_SCANNED',
+			);
+		});
+
+		test('refuses to delete while a scan runs', async () => {
+			const { vars } = groupFixture();
+			await scanner.scan('scan-1');
+
+			const rescan = scanner.scan('scan-2');
+			const result = await scanner.deleteVariables('scan-1', GROUP);
+			await rescan;
+
+			expect(result.error?.code).toBe('BUSY');
+			expect(vars[0].remove).not.toHaveBeenCalled();
+		});
+
+		test('refuses a second delete while one runs, so only one version is saved', async () => {
+			const { mockFigma } = groupFixture();
+			await scanner.scan('scan-1');
+
+			const [first, second] = await Promise.all([
+				scanner.deleteVariables('scan-1', GROUP),
+				scanner.deleteVariables('scan-1', GROUP),
+			]);
+
+			expect(first.deletedIds).toHaveLength(3);
+			expect(second.error?.code).toBe('BUSY');
+			expect(mockFigma.saveVersionHistoryAsync).toHaveBeenCalledTimes(1);
+		});
+
+		test('reports what was deleted when removing a variable fails partway', async () => {
+			const { vars, mockFigma } = groupFixture();
+			await scanner.scan('scan-1');
+			vars[2].remove.mockImplementation(() => {
+				throw new Error('Variable is locked');
+			});
+
+			const result = await scanner.deleteVariables('scan-1', GROUP);
+
+			expect(result.error?.code).toBe('PARTIAL');
+			expect(result.error?.message).toContain('Variable is locked');
+			expect(result.versionSaved).toBe(true);
+			expect(result.deletedIds).toEqual(['button-bg']);
+			// The undo step is still closed, and the results can't be used for another delete.
+			expect(mockFigma.commitUndo).toHaveBeenCalledTimes(2);
+			expect(mockNotify).toHaveBeenCalledWith('unusedScan.stale', { scanId: 'scan-1' });
+			expect((await scanner.deleteVariables('scan-1', ['card-bg'])).error?.code).toBe(
+				'STALE',
 			);
 		});
 
@@ -899,9 +976,9 @@ describe('UnusedVariableScanner', () => {
 			await scanner.scan('scan-1');
 			mockFigma.saveVersionHistoryAsync.mockRejectedValue(new Error('no access'));
 
-			await expect(scanner.deleteVariables(['brand-bg'])).rejects.toThrow(
-				"Couldn't save a version",
-			);
+			const result = await scanner.deleteVariables('scan-1', GROUP);
+
+			expect(result.error?.code).toBe('VERSION_FAILED');
 			expect(vars[0].remove).not.toHaveBeenCalled();
 		});
 	});

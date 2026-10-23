@@ -1,13 +1,14 @@
 import { formatDuration, logger } from '../../shared/logger';
 import type {
 	SearchNotifier,
+	UnusedDeleteErrorCode,
 	UnusedDeleteResult,
 	UnusedScanResult,
 	UnusedVariable,
 	VariableResolvedType,
 } from '../../shared/rpc-types';
 import { SCOPE_ALL_PAGES } from '../../shared/constants';
-import { buildChildrenMap, expandWithDescendants } from '../../shared/unused-tree';
+import { buildChildrenMap } from '../../shared/unused-tree';
 import {
 	collectPrototypeVariableIds,
 	collectVariableIds,
@@ -19,6 +20,21 @@ import { findUnusedVariables, type GraphCollection, type GraphVariable } from '.
 import { acquireTraversalMode } from './traversal-mode';
 
 const VERSION_TITLE = 'Before FindMyVar cleanup';
+const STALE_MESSAGE = 'The file changed since the scan. Rescan before deleting.';
+
+function failure(
+	code: UnusedDeleteErrorCode,
+	message: string,
+	partial: Partial<UnusedDeleteResult> = {},
+): UnusedDeleteResult {
+	return {
+		deletedIds: [],
+		skippedIds: [],
+		versionSaved: false,
+		...partial,
+		error: { code, message },
+	};
+}
 
 type WithBoundVariables = { boundVariables?: unknown };
 type WithReactions = { reactions?: ReadonlyArray<unknown> };
@@ -142,6 +158,7 @@ class UnusedVariableScanner {
 	private lastScanId: string | null = null;
 	private isStale: boolean = false;
 	private isTrackingChanges: boolean = false;
+	private isDeleting: boolean = false;
 
 	constructor(notifier: SearchNotifier) {
 		this.notifier = notifier;
@@ -249,74 +266,114 @@ class UnusedVariableScanner {
 	}
 
 	/**
-	 * Deletes the given variables together with the unused variables that point to them. A version is
-	 * saved first, and everything is checked again against the current file right before removing.
+	 * Deletes exactly `ids`, from the result of scan `scanId`. A version is saved first, and everything
+	 * is checked again against the current file right before removing. Refusals come back as an
+	 * `error` with a code, not as a thrown error.
 	 */
-	async deleteVariables(ids: string[]): Promise<UnusedDeleteResult> {
-		if (!this.lastDirectlyUsedIds) {
-			throw new Error('Scan the file before deleting.');
+	async deleteVariables(scanId: string, ids: string[]): Promise<UnusedDeleteResult> {
+		if (this.isDeleting || this.activeScanId) {
+			return failure('BUSY', 'Wait for the current scan or delete to finish.');
 		}
-		this.throwIfStale();
+		if (!this.lastDirectlyUsedIds) {
+			return failure('NOT_SCANNED', 'Scan the file before deleting.');
+		}
+		if (scanId !== this.lastScanId || this.isStale) {
+			return failure('STALE', STALE_MESSAGE);
+		}
 
-		if ((await this.planDeletion(ids)).toDelete.length === 0) {
-			return { deletedIds: [], versionSaved: false };
+		this.isDeleting = true;
+		try {
+			return await this.deleteChecked(ids);
+		} finally {
+			this.isDeleting = false;
+		}
+	}
+
+	private async deleteChecked(ids: string[]): Promise<UnusedDeleteResult> {
+		const first = await this.planDeletion(ids);
+		if (first.isStale) this.markStale();
+		if (this.isStale) return failure('STALE', STALE_MESSAGE);
+		if (first.toDelete.length === 0) {
+			return { deletedIds: [], skippedIds: first.skippedIds, versionSaved: false };
 		}
 
 		try {
 			await figma.saveVersionHistoryAsync(
 				VERSION_TITLE,
-				`FindMyVar is about to delete up to ${ids.length} unused variables.`,
+				`FindMyVar is about to delete ${first.toDelete.length} unused variables.`,
 			);
 		} catch {
-			throw new Error("Couldn't save a version first, so nothing was deleted.");
+			return failure(
+				'VERSION_FAILED',
+				"Couldn't save a version first, so nothing was deleted.",
+			);
 		}
 
 		// Someone may have used a variable while the version saved. Check again, then remove with no
 		// awaits in between, so nothing can change after this last check.
-		const { toDelete, children, variables } = await this.planDeletion(ids);
+		const { toDelete, skippedIds, children, variables, isStale } = await this.planDeletion(ids);
 		// Also catches variables created after the scan, which the stale notice doesn't watch.
-		if (toDelete.some((id) => this.lastDirectlyUsedIds!.has(id))) this.markStale();
-		this.throwIfStale();
-		const byId = new Map(variables.map((v) => [v.id, v]));
+		if (isStale || toDelete.some((id) => this.lastDirectlyUsedIds!.has(id))) this.markStale();
+		if (this.isStale) return failure('STALE', STALE_MESSAGE, { versionSaved: true });
 
+		const byId = new Map(variables.map((v) => [v.id, v]));
 		// Delete the variables that point to others first, so no alias is left dangling in between.
 		const ordered = this.dependentsFirst(toDelete, children);
 
 		const deletedIds: string[] = [];
 		figma.commitUndo();
-		for (const id of ordered) {
-			const variable = byId.get(id);
-			if (variable) {
-				variable.remove();
-				deletedIds.push(id);
+		try {
+			for (const id of ordered) {
+				const variable = byId.get(id);
+				if (variable) {
+					variable.remove();
+					deletedIds.push(id);
+				}
 			}
+		} catch (error) {
+			// The results no longer match the file, so they can't be used for another delete.
+			this.markStale();
+			const reason = error instanceof Error ? error.message : 'Unknown error';
+			return failure(
+				'PARTIAL',
+				`Deleted ${deletedIds.length} of ${ordered.length} variables, then stopped: ${reason}`,
+				{ deletedIds, skippedIds, versionSaved: true },
+			);
+		} finally {
+			figma.commitUndo();
 		}
-		figma.commitUndo();
 
 		logger.log(`[UnusedScan] Deleted ${deletedIds.length} variables`);
-		return { deletedIds, versionSaved: true };
+		return { deletedIds, skippedIds, versionSaved: true };
 	}
 
-	/** Which of `ids` are still unused, plus the unused variables that point to them. */
+	/**
+	 * Splits `ids` into the ones still unused and the ones in use now. `isStale` means an unused
+	 * variable that wasn't requested points to a requested one: deleting would break that alias, and
+	 * the request didn't include it because aliases changed after the scan.
+	 */
 	private async planDeletion(ids: string[]): Promise<{
 		toDelete: string[];
+		skippedIds: string[];
 		children: Map<string, string[]>;
 		variables: Variable[];
+		isStale: boolean;
 	}> {
 		const fresh = await this.analyze(this.lastDirectlyUsedIds!);
 		const deletable = new Set(fresh.unused.map((v) => v.id));
+		const requested = new Set(ids);
 		const children = buildChildrenMap(fresh.unused);
-		const toDelete = expandWithDescendants(
-			ids.filter((id) => deletable.has(id)),
-			children,
+		const toDelete = ids.filter((id) => deletable.has(id));
+		const isStale = toDelete.some((id) =>
+			(children.get(id) ?? []).some((child) => !requested.has(child)),
 		);
-		return { toDelete, children, variables: fresh.variables };
-	}
-
-	private throwIfStale(): void {
-		if (this.isStale) {
-			throw new Error('The file changed since the scan. Rescan before deleting.');
-		}
+		return {
+			toDelete,
+			skippedIds: ids.filter((id) => !deletable.has(id)),
+			children,
+			variables: fresh.variables,
+			isStale,
+		};
 	}
 
 	private markStale(): void {

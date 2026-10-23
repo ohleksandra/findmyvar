@@ -22,6 +22,8 @@ interface UnusedStore {
 	result: UnusedScanResult | null;
 	error: string | null;
 	activeScanId: string | null;
+	/** The scan `result` came from. Deletes name it, so they never run against a newer scan. */
+	resultScanId: string | null;
 	isStale: boolean;
 	filter: string;
 	selectedIds: string[];
@@ -59,6 +61,7 @@ const initialScanState = {
 	result: null,
 	error: null,
 	activeScanId: null,
+	resultScanId: null,
 	isStale: false,
 	selectedIds: [],
 	expandedId: null,
@@ -164,28 +167,46 @@ export const useUnusedStore = create<UnusedStore>()((set, get) => ({
 	cancelDelete: () => set({ deleteStatus: 'idle', deleteTargetIds: [], deleteError: null }),
 
 	confirmDelete: async (extraIds = []) => {
-		const ids = Array.from(new Set([...get().deleteTargetIds, ...extraIds]));
+		const { resultScanId, deleteTargetIds } = get();
+		if (!resultScanId) return;
+		const ids = Array.from(new Set([...deleteTargetIds, ...extraIds]));
 		set({ deleteStatus: 'deleting', deleteError: null });
 
+		let deleteResult: UnusedDeleteResult;
 		try {
-			const deleteResult = await callPlugin('unusedScan.delete', { ids });
-			const deleted = new Set(deleteResult.deletedIds);
-			set({
-				deleteStatus: 'done',
-				deleteResult,
-				deleteTargetIds: [],
-				selectedIds: get().selectedIds.filter((id) => !deleted.has(id)),
-				expandedId: null,
-			});
-			void usePluginStore.getState().getAllVariables();
+			deleteResult = await callPlugin('unusedScan.delete', { scanId: resultScanId, ids });
 		} catch (err) {
-			const message = err instanceof Error ? err.message : 'Delete failed';
 			set({
 				deleteStatus: 'confirming',
-				deleteError: message,
-				isStale: get().isStale || message.includes('changed since the scan'),
+				deleteError: err instanceof Error ? err.message : 'Delete failed',
 			});
+			return;
 		}
+
+		const deleted = new Set(deleteResult.deletedIds);
+		const selectedIds = get().selectedIds.filter((id) => !deleted.has(id));
+		if (deleted.size > 0) void usePluginStore.getState().getAllVariables();
+
+		const { error } = deleteResult;
+		if (error) {
+			set({
+				deleteStatus: 'confirming',
+				deleteError: error.message,
+				// After a partial delete the list no longer matches the file either.
+				isStale: get().isStale || error.code === 'STALE' || error.code === 'PARTIAL',
+				deleteTargetIds: get().deleteTargetIds.filter((id) => !deleted.has(id)),
+				selectedIds,
+			});
+			return;
+		}
+
+		set({
+			deleteStatus: 'done',
+			deleteResult,
+			deleteTargetIds: [],
+			selectedIds,
+			expandedId: null,
+		});
 	},
 
 	_setProgress: (scanId, progress) => {
@@ -195,7 +216,7 @@ export const useUnusedStore = create<UnusedStore>()((set, get) => ({
 
 	_complete: (scanId, result) => {
 		if (get().activeScanId !== scanId) return;
-		set({ status: 'done', result, activeScanId: null, isStale: false });
+		set({ status: 'done', result, activeScanId: null, resultScanId: scanId, isStale: false });
 	},
 
 	_setError: (scanId, error) => {

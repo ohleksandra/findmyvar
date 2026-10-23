@@ -107,9 +107,24 @@ export interface UnusedScanResult {
 	publishedNames: string[];
 }
 
+export type UnusedDeleteErrorCode =
+	/** There's no finished scan to delete from. */
+	| 'NOT_SCANNED'
+	/** The file changed since the scan, or the request is for an older scan. Rescan first. */
+	| 'STALE'
+	/** A scan or another delete is running. */
+	| 'BUSY'
+	/** A version couldn't be saved first, so nothing was deleted. */
+	| 'VERSION_FAILED'
+	/** Some variables were deleted, then removing one failed. `deletedIds` lists the deleted ones. */
+	| 'PARTIAL';
+
 export interface UnusedDeleteResult {
 	deletedIds: string[];
+	/** Requested variables that are in use now, so they were kept. */
+	skippedIds: string[];
 	versionSaved: boolean;
+	error?: { code: UnusedDeleteErrorCode; message: string };
 }
 
 export interface PluginProcedures extends RpcProcedureSchema {
@@ -144,7 +159,8 @@ export interface PluginProcedures extends RpcProcedureSchema {
 		response: { cancelled: boolean };
 	};
 	'unusedScan.delete': {
-		request: { ids: string[] };
+		/** `ids` must include the unused variables that point to them; nothing else gets deleted. */
+		request: { scanId: string; ids: string[] };
 		response: UnusedDeleteResult;
 	};
 }

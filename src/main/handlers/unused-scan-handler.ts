@@ -19,6 +19,6 @@ export function unusedScanHandlers(deps: HandlerDeps): HandlerMap {
 		},
 
 		'unusedScan.delete': (payload: DeletePayload) =>
-			unusedVariableScanner.deleteVariables(payload.ids),
+			unusedVariableScanner.deleteVariables(payload.scanId, payload.ids),
 	};
 }
