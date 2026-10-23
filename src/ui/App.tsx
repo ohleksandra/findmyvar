@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { usePlugin } from '@/context/plugin-context';
+import { refreshOnReturn } from '@/lib/refresh-on-return';
 import Header from './components/header';
 import SearchPane from './components/search-pane';
 import ErrorBoundary from './components/error-boundary';
@@ -11,6 +12,8 @@ const App = () => {
 
 	useEffect(() => {
 		getAllVariables();
+		// Undo in Figma can bring deleted variables back while the plugin is open.
+		return refreshOnReturn(() => void getAllVariables());
 	}, [getAllVariables]);
 
 	return (

@@ -82,8 +82,32 @@ export const usePluginStore = create<PluginStore>()(
 			async getAllVariables() {
 				try {
 					const { variables } = await callPlugin('get-variables');
+					const byId = new Map(variables.map((v) => [v.id, v]));
 
-					set({ variables });
+					set((prev) => {
+						// Deleted variables drop out, renamed ones get their new name.
+						const updated = {
+							variables,
+							recentSearches: prev.recentSearches.flatMap(
+								(v) => byId.get(v.id) ?? [],
+							),
+						};
+						const searched = prev.searchVariable;
+						if (!searched || prev.isSearching) return updated;
+
+						const fresh = byId.get(searched.id);
+						if (fresh) return { ...updated, searchVariable: fresh };
+						// The searched variable is gone, so its results point at nothing.
+						return {
+							...updated,
+							searchVariable: null,
+							searchResults: [],
+							isSearchCompleted: false,
+							isSearchCancelled: false,
+							progress: null,
+							cached: false,
+						};
+					});
 				} catch (err) {
 					set({
 						error: err instanceof Error ? err.message : 'Failed to fetch variables',

@@ -353,4 +353,74 @@ describe('PluginStore', () => {
 			expect(usePluginStore.getState().isSearching).toBe(false);
 		});
 	});
+
+	describe('getAllVariables', () => {
+		const variable = (id: string, name = id) => ({
+			id,
+			name,
+			resolvedType: 'COLOR' as const,
+			hiddenFromPublishing: false,
+		});
+
+		test('drops deleted variables from recent searches and picks up new names', async () => {
+			const usePluginStore = await resetStore();
+			usePluginStore.setState({
+				recentSearches: [variable('a'), variable('gone'), variable('b', 'old-name')],
+			});
+			mockCallPlugin.mockResolvedValue({
+				variables: [variable('a'), variable('b', 'new-name'), variable('c')],
+			});
+
+			await usePluginStore.getState().getAllVariables();
+
+			expect(usePluginStore.getState().recentSearches).toEqual([
+				variable('a'),
+				variable('b', 'new-name'),
+			]);
+		});
+
+		test('leaves the results of a deleted variable', async () => {
+			const usePluginStore = await resetStore();
+			usePluginStore.setState({
+				searchVariable: variable('gone'),
+				isSearchCompleted: true,
+				searchResults: [
+					{
+						nodeId: 'n1',
+						nodeName: 'Rect',
+						nodeType: 'RECTANGLE',
+						field: 'fills',
+						pageName: 'Page 1',
+						pageId: 'p1',
+						nodePath: 'Rect',
+					},
+				],
+				cached: true,
+			});
+			mockCallPlugin.mockResolvedValue({ variables: [variable('a')] });
+
+			await usePluginStore.getState().getAllVariables();
+
+			expect(usePluginStore.getState()).toMatchObject({
+				searchVariable: null,
+				searchResults: [],
+				isSearchCompleted: false,
+				cached: false,
+			});
+		});
+
+		test('keeps the searched variable while it exists', async () => {
+			const usePluginStore = await resetStore();
+			usePluginStore.setState({
+				searchVariable: variable('a', 'old'),
+				isSearchCompleted: true,
+			});
+			mockCallPlugin.mockResolvedValue({ variables: [variable('a', 'new')] });
+
+			await usePluginStore.getState().getAllVariables();
+
+			expect(usePluginStore.getState().searchVariable).toEqual(variable('a', 'new'));
+			expect(usePluginStore.getState().isSearchCompleted).toBe(true);
+		});
+	});
 });
