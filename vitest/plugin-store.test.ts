@@ -238,6 +238,33 @@ describe('PluginStore', () => {
 			expect(usePluginStore.getState().isSearchCompleted).toBe(false);
 		});
 
+		test('a search that finishes while cancelling stays finished', async () => {
+			const usePluginStore = await resetStore();
+			usePluginStore.setState({ activeSearchId: 'search-1', isSearching: true });
+			let finishCancel!: (value: { cancelled: boolean }) => void;
+			mockCallPlugin.mockReturnValue(new Promise((resolve) => (finishCancel = resolve)));
+
+			const cancelling = usePluginStore.getState().cancelSearch();
+			usePluginStore.getState()._appendResults('search-1', [], true);
+			finishCancel({ cancelled: false });
+			await cancelling;
+
+			expect(usePluginStore.getState().isSearchCompleted).toBe(true);
+			expect(usePluginStore.getState().isSearchCancelled).toBe(false);
+		});
+
+		test('a failed cancel request is caught and still stops the search', async () => {
+			const usePluginStore = await resetStore();
+			usePluginStore.setState({ activeSearchId: 'search-1', isSearching: true });
+			mockCallPlugin.mockRejectedValue(new Error('RPC call timed out'));
+
+			await expect(usePluginStore.getState().cancelSearch()).resolves.toBeUndefined();
+
+			expect(usePluginStore.getState().isSearching).toBe(false);
+			expect(usePluginStore.getState().isSearchCancelled).toBe(true);
+			expect(usePluginStore.getState().activeSearchId).toBeNull();
+		});
+
 		test('a new search clears the cancelled and completed flags', async () => {
 			const usePluginStore = await resetStore();
 			usePluginStore.setState({ isSearchCancelled: true, isSearchCompleted: true });

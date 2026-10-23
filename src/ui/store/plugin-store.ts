@@ -129,12 +129,16 @@ export const usePluginStore = create<PluginStore>()(
 			},
 
 			cancelSearch: async () => {
+				const searchId = get().activeSearchId;
 				try {
 					await callPlugin('variableSearch.cancel');
-				} finally {
-					// Not completed: results so far are partial, so an empty list doesn't mean unused.
-					set({ isSearching: false, isSearchCancelled: true, activeSearchId: null });
+				} catch {
+					// Stop anyway: the UI stops listening to the search, so its results can't show up.
 				}
+				// The search may have finished while cancelling. Then it stays finished.
+				if (!searchId || get().activeSearchId !== searchId) return;
+				// Not completed: results so far are partial, so an empty list doesn't mean unused.
+				set({ isSearching: false, isSearchCancelled: true, activeSearchId: null });
 			},
 
 			clearSearchResults: () => {
@@ -147,11 +151,7 @@ export const usePluginStore = create<PluginStore>()(
 
 			resetSearch: async () => {
 				if (get().isSearching) {
-					try {
-						await get().cancelSearch();
-					} catch {
-						// Clear anyway: cancelSearch already stopped listening for that search's results.
-					}
+					await get().cancelSearch();
 				}
 				// Back to the start screen: no query, no variable, no "no results" state.
 				set({
