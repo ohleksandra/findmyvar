@@ -42,6 +42,11 @@ const ACTIONS: CommandAction[] = [
 	},
 ];
 
+const recentItemValue = (variable: Variable) => `recent-${variable.id}`;
+const variableItemValue = (variable: Variable) => `${variable.id}-${variable.name}`;
+const ACTION_ITEM_PREFIX = 'action-';
+const actionItemValue = (id: ActionId) => `${ACTION_ITEM_PREFIX}${id}`;
+
 function matchActions(query: string): CommandAction[] {
 	const q = query.toLowerCase().trim();
 	if (!q) return ACTIONS;
@@ -102,11 +107,30 @@ const SearchControl = () => {
 	const showNoVariables = !!trimmedQuery && !isActionQuery && suggestions.length === 0;
 	const showActions = matchingActions.length > 0;
 	const hasItems = showRecent || showVariables || showActions;
+
+	const firstItemValue = showRecent
+		? recentItemValue(recentSearches[0])
+		: showVariables
+			? variableItemValue(suggestions[0].variable)
+			: showActions
+				? actionItemValue(matchingActions[0].id)
+				: '';
+	// The highlighted item, for the query it was picked at. Typing moves it back to the first item.
+	const [highlight, setHighlight] = useState<{ query: string; value: string } | null>(null);
+	const highlighted = highlight?.query === searchQuery ? highlight.value : firstItemValue;
+	const showEnterHint =
+		isSuggestionsOpen && !!highlighted && !highlighted.startsWith(ACTION_ITEM_PREFIX);
 	const inputValue = isUnusedMode ? unusedFilter : searchQuery;
 
 	return (
 		<div className="relative">
-			<Command className="bg-transparent overflow-visible" shouldFilter={false} loop>
+			<Command
+				className="bg-transparent overflow-visible"
+				shouldFilter={false}
+				loop
+				value={highlighted}
+				onValueChange={(value) => setHighlight({ query: searchQuery, value })}
+			>
 				<CommandInput
 					placeholder={
 						isUnusedMode
@@ -143,23 +167,27 @@ const SearchControl = () => {
 					}
 					shortcut={
 						inputValue ? (
-							<button
-								type="button"
-								className="flex rounded-sm text-icon-secondary outline-none hover:bg-hover-translucent hover:text-icon focus-visible:outline-1 focus-visible:outline-border-selected"
-								aria-label={isUnusedMode ? 'Clear filter' : 'Clear search'}
-								// Keep focus in the input.
-								onMouseDown={(e) => e.preventDefault()}
-								onClick={() => {
-									close();
-									if (isUnusedMode) {
-										setUnusedFilter('');
-									} else {
-										void resetSearch();
-									}
-								}}
-							>
-								<CloseSmallIcon className="size-5" aria-hidden="true" />
-							</button>
+							<span className="flex items-center gap-x-2">
+								{/* Enter searches the highlighted variable. */}
+								{showEnterHint && <span aria-hidden="true">Search ↵</span>}
+								<button
+									type="button"
+									className="flex rounded-sm text-icon-secondary outline-none hover:bg-hover-translucent hover:text-icon focus-visible:outline-1 focus-visible:outline-border-selected"
+									aria-label={isUnusedMode ? 'Clear filter' : 'Clear search'}
+									// Keep focus in the input.
+									onMouseDown={(e) => e.preventDefault()}
+									onClick={() => {
+										close();
+										if (isUnusedMode) {
+											setUnusedFilter('');
+										} else {
+											void resetSearch();
+										}
+									}}
+								>
+									<CloseSmallIcon className="size-5" aria-hidden="true" />
+								</button>
+							</span>
 						) : isUnusedMode ? null : (
 							// An empty field has nothing to search, so point to the actions instead.
 							<Kbd aria-hidden="true">{ACTION_PREFIX}</Kbd>
@@ -201,7 +229,7 @@ const SearchControl = () => {
 										className="pl-0"
 										key={variable.id}
 										onSelect={() => selectVariable(variable)}
-										value={`recent-${variable.id}`}
+										value={recentItemValue(variable)}
 									>
 										<VariableTypeIcon
 											type={variable.resolvedType}
@@ -219,7 +247,7 @@ const SearchControl = () => {
 										className="pl-0"
 										key={variable.id}
 										onSelect={() => selectVariable(variable)}
-										value={`${variable.id}-${variable.name}`}
+										value={variableItemValue(variable)}
 									>
 										<VariableTypeIcon
 											type={variable.resolvedType}
@@ -248,7 +276,7 @@ const SearchControl = () => {
 										className="pl-0"
 										key={action.id}
 										onSelect={() => runAction(action.id)}
-										value={`action-${action.id}`}
+										value={actionItemValue(action.id)}
 									>
 										<action.icon className="size-6" />
 										<span>{action.label}</span>
