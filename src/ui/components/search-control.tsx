@@ -11,7 +11,6 @@ import {
 	CommandList,
 } from './ui/command';
 import { Badge } from './ui/badge';
-import { Kbd } from './ui/kbd';
 import VariableTypeIcon from './variable-type-icon';
 import { cn } from '@/lib/utils';
 import type { Variable } from '../../shared/rpc-types';
@@ -118,8 +117,12 @@ const SearchControl = () => {
 	// The highlighted item, for the query it was picked at. Typing moves it back to the first item.
 	const [highlight, setHighlight] = useState<{ query: string; value: string } | null>(null);
 	const highlighted = highlight?.query === searchQuery ? highlight.value : firstItemValue;
+	// Enter searches the highlighted variable, or opens the list from an empty field.
 	const showEnterHint =
-		isSuggestionsOpen && !!highlighted && !highlighted.startsWith(ACTION_ITEM_PREFIX);
+		!isUnusedMode &&
+		(isSuggestionsOpen
+			? !!highlighted && !highlighted.startsWith(ACTION_ITEM_PREFIX)
+			: !trimmedQuery);
 	const inputValue = isUnusedMode ? unusedFilter : searchQuery;
 
 	return (
@@ -166,31 +169,29 @@ const SearchControl = () => {
 						)
 					}
 					shortcut={
-						inputValue ? (
+						(showEnterHint || inputValue) && (
 							<span className="flex items-center gap-x-2">
-								{/* Enter searches the highlighted variable. */}
 								{showEnterHint && <span aria-hidden="true">Search ↵</span>}
-								<button
-									type="button"
-									className="flex rounded-sm text-icon-secondary outline-none hover:bg-hover-translucent hover:text-icon focus-visible:outline-1 focus-visible:outline-border-selected"
-									aria-label={isUnusedMode ? 'Clear filter' : 'Clear search'}
-									// Keep focus in the input.
-									onMouseDown={(e) => e.preventDefault()}
-									onClick={() => {
-										close();
-										if (isUnusedMode) {
-											setUnusedFilter('');
-										} else {
-											void resetSearch();
-										}
-									}}
-								>
-									<CloseSmallIcon className="size-5" aria-hidden="true" />
-								</button>
+								{inputValue && (
+									<button
+										type="button"
+										className="flex rounded-sm text-icon-secondary outline-none hover:bg-hover-translucent hover:text-icon focus-visible:outline-1 focus-visible:outline-border-selected"
+										aria-label={isUnusedMode ? 'Clear filter' : 'Clear search'}
+										// Keep focus in the input.
+										onMouseDown={(e) => e.preventDefault()}
+										onClick={() => {
+											close();
+											if (isUnusedMode) {
+												setUnusedFilter('');
+											} else {
+												void resetSearch();
+											}
+										}}
+									>
+										<CloseSmallIcon className="size-5" aria-hidden="true" />
+									</button>
+								)}
 							</span>
-						) : isUnusedMode ? null : (
-							// An empty field has nothing to search, so point to the actions instead.
-							<Kbd aria-hidden="true">{ACTION_PREFIX}</Kbd>
 						)
 					}
 					onValueChange={(value) => {
@@ -209,7 +210,10 @@ const SearchControl = () => {
 						} else if (e.key === 'Backspace' && isUnusedMode && !unusedFilter) {
 							// Like removing a tag: back to the Search tab, results stay in their tab.
 							showSearchTab();
-						} else if (e.key === 'ArrowDown' && !isSuggestionsOpen) {
+						} else if (
+							(e.key === 'ArrowDown' || e.key === 'Enter') &&
+							!isSuggestionsOpen
+						) {
 							open();
 						}
 					}}
