@@ -15,6 +15,13 @@ const DELETE_TIMEOUT_MS = 5 * 60 * 1000;
 export type UnusedScanStatus = 'idle' | 'scanning' | 'done' | 'error';
 export type UnusedDeleteStatus = 'idle' | 'confirming' | 'deleting' | 'done';
 
+interface PreviousScan {
+	result: UnusedScanResult;
+	resultScanId: string | null;
+	isStale: boolean;
+	selectedIds: string[];
+}
+
 interface UnusedStore {
 	/** Whether the "Unused variables" tab exists. */
 	isOpen: boolean;
@@ -36,6 +43,8 @@ interface UnusedStore {
 	deleteTargetIds: string[];
 	deleteError: string | null;
 	deleteResult: UnusedDeleteResult | null;
+	/** The finished scan shown before a rescan. Cancelling the rescan brings it back. */
+	previousScan: PreviousScan | null;
 
 	startScan(): Promise<void>;
 	showSearch(): void;
@@ -73,7 +82,16 @@ const initialScanState = {
 	deleteTargetIds: [],
 	deleteError: null,
 	deleteResult: null,
+	previousScan: null as PreviousScan | null,
 };
+
+async function cancelPluginScan(): Promise<void> {
+	try {
+		await callPlugin('unusedScan.cancel');
+	} catch {
+		// The UI stops listening to the scan anyway, so its results can't show up later.
+	}
+}
 
 export const useUnusedStore = create<UnusedStore>()((set, get) => ({
 	isOpen: false,
@@ -86,6 +104,14 @@ export const useUnusedStore = create<UnusedStore>()((set, get) => ({
 			await usePluginStore.getState().cancelSearch();
 		}
 
+		const state = get();
+		let previousScan = state.status === 'scanning' ? state.previousScan : null;
+		// A result whose variables were just deleted no longer matches the file, so it isn't kept.
+		if (state.status === 'done' && state.deleteStatus !== 'done' && state.result) {
+			const { result, resultScanId, isStale, selectedIds } = state;
+			previousScan = { result, resultScanId, isStale, selectedIds };
+		}
+
 		const scanId = nanoid();
 		set({
 			...initialScanState,
@@ -93,6 +119,7 @@ export const useUnusedStore = create<UnusedStore>()((set, get) => ({
 			isActive: true,
 			status: 'scanning',
 			activeScanId: scanId,
+			previousScan,
 		});
 
 		try {
@@ -103,18 +130,31 @@ export const useUnusedStore = create<UnusedStore>()((set, get) => ({
 	},
 
 	cancelScan: async () => {
-		try {
-			await callPlugin('unusedScan.cancel');
-		} finally {
-			set({ status: 'idle', progress: null, activeScanId: null });
-		}
+		const scanId = get().activeScanId;
+		if (!scanId) return;
+		await cancelPluginScan();
+		// The scan may have finished or failed while cancelling. Then its outcome stays.
+		if (get().activeScanId !== scanId) return;
+
+		const { previousScan } = get();
+		set(
+			previousScan
+				? {
+						...previousScan,
+						status: 'done',
+						progress: null,
+						activeScanId: null,
+						previousScan: null,
+					}
+				: { status: 'idle', progress: null, activeScanId: null },
+		);
 	},
 
 	close: async () => {
-		if (get().status === 'scanning') {
-			await get().cancelScan();
-		}
+		const isScanning = get().status === 'scanning';
+		// Close right away. A scan that finishes later has no active scan to land in.
 		set({ ...initialScanState, isOpen: false, isActive: false, filter: '' });
+		if (isScanning) await cancelPluginScan();
 	},
 
 	showSearch: () => set({ isActive: false }),
@@ -231,15 +271,28 @@ export const useUnusedStore = create<UnusedStore>()((set, get) => ({
 
 	_complete: (scanId, result) => {
 		if (get().activeScanId !== scanId) return;
-		set({ status: 'done', result, activeScanId: null, resultScanId: scanId, isStale: false });
+		set({
+			status: 'done',
+			result,
+			activeScanId: null,
+			resultScanId: scanId,
+			isStale: false,
+			previousScan: null,
+		});
 	},
 
 	_setError: (scanId, error) => {
 		if (get().activeScanId !== scanId) return;
-		set({ status: 'error', error, activeScanId: null });
+		set({ status: 'error', error, activeScanId: null, previousScan: null });
 	},
 
 	_setStale: () => {
-		if (get().status === 'done') set({ isStale: true });
+		const { status, previousScan } = get();
+		if (status === 'done') {
+			set({ isStale: true });
+		} else if (previousScan) {
+			// During a rescan the notice is about the previous scan, which Cancel brings back.
+			set({ previousScan: { ...previousScan, isStale: true } });
+		}
 	},
 }));

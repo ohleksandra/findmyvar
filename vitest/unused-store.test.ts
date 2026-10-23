@@ -38,6 +38,16 @@ const result: UnusedScanResult = {
 	],
 };
 
+function deferred<T>() {
+	let resolve!: (value: T) => void;
+	let reject!: (reason: unknown) => void;
+	const promise = new Promise<T>((res, rej) => {
+		resolve = res;
+		reject = rej;
+	});
+	return { promise, resolve, reject };
+}
+
 async function freshStore() {
 	vi.resetModules();
 	const { useUnusedStore } = await import('../src/ui/store/unused-store');
@@ -263,6 +273,146 @@ describe('useUnusedStore', () => {
 			isOpen: false,
 			isActive: false,
 			result: null,
+		});
+	});
+
+	describe('cancelling', () => {
+		test('a scan that finishes while cancelling keeps its results', async () => {
+			const useUnusedStore = await freshStore();
+			useUnusedStore.setState({ isOpen: true, status: 'scanning', activeScanId: 'scan-1' });
+			const cancel = deferred<{ cancelled: boolean }>();
+			mockCallPlugin.mockReturnValue(cancel.promise);
+
+			const cancelling = useUnusedStore.getState().cancelScan();
+			useUnusedStore.getState()._complete('scan-1', result);
+			cancel.resolve({ cancelled: false });
+			await cancelling;
+
+			expect(useUnusedStore.getState()).toMatchObject({
+				status: 'done',
+				result,
+				resultScanId: 'scan-1',
+			});
+		});
+
+		test('a failed cancel request is caught and still stops the scan', async () => {
+			const useUnusedStore = await freshStore();
+			useUnusedStore.setState({ isOpen: true, status: 'scanning', activeScanId: 'scan-1' });
+			mockCallPlugin.mockRejectedValue(new Error('RPC call timed out'));
+
+			await expect(useUnusedStore.getState().cancelScan()).resolves.toBeUndefined();
+
+			expect(useUnusedStore.getState()).toMatchObject({ status: 'idle', activeScanId: null });
+		});
+
+		test('closing the tab never waits on or fails with the cancel request', async () => {
+			const useUnusedStore = await freshStore();
+			useUnusedStore.setState({
+				isOpen: true,
+				isActive: true,
+				status: 'scanning',
+				activeScanId: 'scan-1',
+			});
+			const cancel = deferred<{ cancelled: boolean }>();
+			mockCallPlugin.mockReturnValue(cancel.promise);
+
+			const closing = useUnusedStore.getState().close();
+			expect(useUnusedStore.getState()).toMatchObject({ isOpen: false, status: 'idle' });
+
+			cancel.reject(new Error('RPC call timed out'));
+			await expect(closing).resolves.toBeUndefined();
+			useUnusedStore.getState()._complete('scan-1', result);
+			expect(useUnusedStore.getState()).toMatchObject({ isOpen: false, result: null });
+		});
+
+		test('a scan still starts when stopping the running search fails', async () => {
+			const useUnusedStore = await freshStore();
+			const { usePluginStore } = await import('../src/ui/store/plugin-store');
+			usePluginStore.setState({ isSearching: true, activeSearchId: 'search-1' });
+			mockCallPlugin.mockImplementation((method: string) =>
+				method === 'variableSearch.cancel'
+					? Promise.reject(new Error('RPC call timed out'))
+					: Promise.resolve({ started: true }),
+			);
+
+			await expect(useUnusedStore.getState().startScan()).resolves.toBeUndefined();
+
+			expect(useUnusedStore.getState().status).toBe('scanning');
+			expect(mockCallPlugin).toHaveBeenCalledWith('unusedScan.start', {
+				scanId: useUnusedStore.getState().activeScanId,
+			});
+		});
+
+		test('cancelling a rescan brings back the previous results', async () => {
+			const useUnusedStore = await storeWithResult();
+			useUnusedStore.setState({ selectedIds: ['old/divider'] });
+			mockCallPlugin.mockResolvedValue({ started: true });
+
+			await useUnusedStore.getState().startScan();
+			expect(useUnusedStore.getState()).toMatchObject({ status: 'scanning', result: null });
+			await useUnusedStore.getState().cancelScan();
+
+			expect(useUnusedStore.getState()).toMatchObject({
+				status: 'done',
+				result,
+				resultScanId: 'scan-1',
+				isStale: false,
+				selectedIds: ['old/divider'],
+				activeScanId: null,
+				previousScan: null,
+			});
+		});
+
+		test('previous results brought back by Cancel stay out of date', async () => {
+			const useUnusedStore = await storeWithResult();
+			useUnusedStore.setState({ isStale: true });
+			mockCallPlugin.mockResolvedValue({ started: true });
+
+			await useUnusedStore.getState().startScan();
+			await useUnusedStore.getState().cancelScan();
+
+			expect(useUnusedStore.getState()).toMatchObject({ status: 'done', isStale: true });
+		});
+
+		test('a stale notice during a rescan marks the previous results out of date', async () => {
+			const useUnusedStore = await storeWithResult();
+			mockCallPlugin.mockResolvedValue({ started: true });
+
+			await useUnusedStore.getState().startScan();
+			useUnusedStore.getState()._setStale();
+			await useUnusedStore.getState().cancelScan();
+
+			expect(useUnusedStore.getState()).toMatchObject({ status: 'done', isStale: true });
+		});
+
+		test('a finished rescan replaces the previous results', async () => {
+			const useUnusedStore = await storeWithResult();
+			useUnusedStore.setState({ isStale: true });
+			mockCallPlugin.mockResolvedValue({ started: true });
+			const newer: UnusedScanResult = { ...result, unused: [unused('old/divider')] };
+
+			await useUnusedStore.getState().startScan();
+			const scanId = useUnusedStore.getState().activeScanId!;
+			useUnusedStore.getState()._complete(scanId, newer);
+
+			expect(useUnusedStore.getState()).toMatchObject({
+				status: 'done',
+				result: newer,
+				resultScanId: scanId,
+				isStale: false,
+				previousScan: null,
+			});
+		});
+
+		test('results from before a delete are not brought back', async () => {
+			const useUnusedStore = await storeWithResult();
+			useUnusedStore.setState({ deleteStatus: 'done' });
+			mockCallPlugin.mockResolvedValue({ started: true });
+
+			await useUnusedStore.getState().startScan();
+			await useUnusedStore.getState().cancelScan();
+
+			expect(useUnusedStore.getState()).toMatchObject({ status: 'idle', result: null });
 		});
 	});
 });
