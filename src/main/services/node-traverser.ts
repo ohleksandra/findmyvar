@@ -5,8 +5,8 @@ function hasBoundVariables(node: SceneNode): boolean {
 }
 
 /**
- * Layers that can hold a variable: in `boundVariables`, or nested in paints, effects, layout grids
- * or component property definitions (see `forEachNestedBinding`). Components and component sets
+ * Layers that can hold a variable: in `boundVariables`, or nested in paints, effects, layout grids,
+ * Motion or component property definitions (see `forEachNestedBinding`). Components and component sets
  * have fills, so they're included.
  */
 function mayHaveBindings(node: SceneNode): boolean {
@@ -15,7 +15,8 @@ function mayHaveBindings(node: SceneNode): boolean {
 		'fills' in node ||
 		'strokes' in node ||
 		'effects' in node ||
-		'layoutGrids' in node
+		'layoutGrids' in node ||
+		'animationStyles' in node
 	);
 }
 
@@ -33,7 +34,9 @@ async function* findNodesWithBindingsAsync(
 	const traverse = async function* (
 		currentNode: SceneNode,
 	): AsyncGenerator<SceneNode, void, void> {
-		if (signal.cancelled) return;
+		// The walk pauses every few hundred layers, and a layer can be deleted meanwhile. Reading a
+		// deleted layer throws; its variables no longer count as used anyway.
+		if (signal.cancelled || currentNode.removed) return;
 
 		if (include(currentNode)) {
 			yield currentNode;

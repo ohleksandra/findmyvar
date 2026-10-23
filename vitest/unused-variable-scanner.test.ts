@@ -500,6 +500,332 @@ describe('UnusedVariableScanner', () => {
 		expect(unusedIds()).toEqual(['old-bg']);
 	});
 
+	describe('changes that race the scan or the delete', () => {
+		const staleNotices = () =>
+			mockNotify.mock.calls.filter((c) => c[0] === 'unusedScan.stale').length;
+		const bind = (id: string, variableId: string, properties = ['fills']) => ({
+			documentChanges: [
+				{
+					type: 'PROPERTY_CHANGE',
+					node: node(id, { fills: [ALIAS(variableId)] }),
+					properties,
+				},
+			],
+		});
+
+		test('a variable bound while the scan analyses its findings is not deletable', async () => {
+			const vars = [variable('late', NAVY)];
+			const { emitChange } = setupFigma({
+				variables: vars,
+				pages: [{ name: 'Page 1', children: [] }],
+			});
+			// The last step asks Figma whether each candidate is published. Someone binds `late` meanwhile.
+			vars[0].getPublishStatusAsync = async () => {
+				emitChange(bind('card', 'late'));
+				return 'UNPUBLISHED';
+			};
+
+			await scanner.scan('scan-1');
+
+			expect(unusedIds()).toEqual(['late']);
+			expect(staleNotices()).toBe(1);
+			await expect(scanner.deleteVariables(['late'])).rejects.toThrow(
+				'changed since the scan',
+			);
+			expect(vars[0].remove).not.toHaveBeenCalled();
+		});
+
+		test('a variable bound while the version saves is not deleted', async () => {
+			const vars = [variable('v', NAVY)];
+			const { mockFigma, emitChange } = setupFigma({
+				variables: vars,
+				pages: [{ name: 'Page 1', children: [] }],
+			});
+			await scanner.scan('scan-1');
+			mockFigma.saveVersionHistoryAsync.mockImplementation(async () => {
+				emitChange(bind('card', 'v'));
+				return { id: 'v1' };
+			});
+
+			await expect(scanner.deleteVariables(['v'])).rejects.toThrow('changed since the scan');
+			expect(vars[0].remove).not.toHaveBeenCalled();
+		});
+
+		test('a bound layer moved into a part the scan already walked still counts', async () => {
+			const moved = node('moved', { fills: [ALIAS('v')] });
+			const walkedChildren: unknown[] = [];
+			const pendingChildren: unknown[] = [moved];
+			let emitChange: (event: unknown) => void = () => {};
+			// Reading this layer, in the walked frame, is when someone drags `moved` into that frame.
+			const trigger = {
+				...node('trigger', {}),
+				get boundVariables() {
+					if (pendingChildren.includes(moved)) {
+						pendingChildren.splice(pendingChildren.indexOf(moved), 1);
+						walkedChildren.push(moved);
+						emitChange({
+							documentChanges: [
+								{
+									type: 'PROPERTY_CHANGE',
+									node: moved,
+									properties: ['parent', 'x', 'y'],
+								},
+							],
+						});
+					}
+					return {};
+				},
+			};
+			walkedChildren.push(trigger);
+			const walked = {
+				...node('walked', {}),
+				get children() {
+					return walkedChildren.slice();
+				},
+			};
+			const pending = {
+				...node('pending', {}),
+				get children() {
+					return pendingChildren.slice();
+				},
+			};
+			({ emitChange } = setupFigma({
+				variables: [variable('v', NAVY), variable('old-bg', NAVY)],
+				pages: [{ name: 'Page 1', children: [walked, pending] }],
+			}));
+
+			await scanner.scan('scan-1');
+
+			expect(unusedIds()).toEqual(['old-bg']);
+		});
+
+		test('a layer deleted during the scan is skipped instead of failing the scan', async () => {
+			const deleted = {
+				id: 'gone',
+				name: 'gone',
+				type: 'FRAME',
+				removed: true,
+				children: [],
+				get boundVariables() {
+					throw new Error('The node (gone) does not exist');
+				},
+			};
+			setupFigma({
+				variables: [variable('v', NAVY)],
+				pages: [{ name: 'Page 1', children: [node('frame', {}, [deleted])] }],
+			});
+
+			await scanner.scan('scan-1');
+
+			expect(mockNotify).not.toHaveBeenCalledWith('unusedScan.error', expect.anything());
+			expect(unusedIds()).toEqual(['v']);
+		});
+
+		test('a change that cannot be read marks results out of date instead of being skipped', async () => {
+			const { emitChange } = setupFigma({
+				variables: [variable('v', NAVY)],
+				pages: [{ name: 'Page 1', children: [] }],
+			});
+			await scanner.scan('scan-1');
+			const unreadable = {
+				...node('label', {}),
+				type: 'TEXT',
+				fills: Symbol('mixed'),
+				getStyledTextSegments: () => {
+					throw new Error('Unexpected error');
+				},
+			};
+
+			expect(() =>
+				emitChange({
+					documentChanges: [
+						{ type: 'PROPERTY_CHANGE', node: unreadable, properties: ['fills'] },
+					],
+				}),
+			).not.toThrow();
+			expect(staleNotices()).toBe(1);
+			await expect(scanner.deleteVariables(['v'])).rejects.toThrow('changed since the scan');
+		});
+
+		test('a change that cannot be read during the scan makes its result out of date', async () => {
+			const { mockFigma, emitChange } = setupFigma({
+				variables: [variable('v', NAVY)],
+				pages: [{ name: 'Page 1', children: [] }],
+			});
+			mockFigma.getLocalPaintStylesAsync.mockImplementation(async () => {
+				emitChange({
+					documentChanges: [
+						{
+							type: 'PROPERTY_CHANGE',
+							node: {
+								...node('broken', {}),
+								get fills() {
+									throw new Error('Unexpected error');
+								},
+							},
+							properties: ['fills'],
+						},
+					],
+				});
+				return [];
+			});
+
+			await scanner.scan('scan-1');
+
+			expect(staleNotices()).toBe(1);
+		});
+
+		test('changes on layers deleted right after are ignored', async () => {
+			const { emitChange } = setupFigma({
+				variables: [variable('v', NAVY)],
+				pages: [{ name: 'Page 1', children: [] }],
+			});
+			await scanner.scan('scan-1');
+			const deleted = {
+				id: 'gone',
+				type: 'FRAME',
+				removed: true,
+				get boundVariables() {
+					throw new Error('The node (gone) does not exist');
+				},
+			};
+
+			emitChange({
+				documentChanges: [
+					{ type: 'CREATE', node: deleted },
+					{ type: 'PROPERTY_CHANGE', node: deleted, properties: ['fills', 'parent'] },
+				],
+			});
+
+			expect(staleNotices()).toBe(0);
+		});
+
+		test('a moved frame brings the variables of its children', async () => {
+			const { emitChange } = setupFigma({
+				variables: [variable('v', NAVY)],
+				pages: [{ name: 'Page 1', children: [] }],
+			});
+			await scanner.scan('scan-1');
+
+			emitChange({
+				documentChanges: [
+					{
+						type: 'PROPERTY_CHANGE',
+						node: node('card', {}, [node('icon', { fills: [ALIAS('v')] })]),
+						properties: ['parent'],
+					},
+				],
+			});
+
+			expect(staleNotices()).toBe(1);
+		});
+
+		test('pasted layers are read with hidden instance layers included', async () => {
+			const { mockFigma, emitChange } = setupFigma({
+				variables: [variable('v', NAVY)],
+				pages: [{ name: 'Page 1', children: [] }],
+			});
+			await scanner.scan('scan-1');
+			let skippedHiddenLayers: boolean | undefined;
+			const pasted = {
+				...node('pasted', {}),
+				get children() {
+					skippedHiddenLayers = mockFigma.skipInvisibleInstanceChildren;
+					return [];
+				},
+			};
+			// A search is running, which skips hidden layers.
+			const releaseSearch = acquireTraversalMode('fast');
+
+			emitChange({ documentChanges: [{ type: 'CREATE', node: pasted }] });
+
+			expect(skippedHiddenLayers).toBe(false);
+			expect(mockFigma.skipInvisibleInstanceChildren).toBe(true);
+			releaseSearch();
+		});
+	});
+
+	test('counts variables used only in Motion as used', async () => {
+		const animated = {
+			...node('animated', {}),
+			animationStyles: [
+				{
+					type: 'FIGMA',
+					id: 'a1',
+					styleId: 'fade',
+					name: 'Fade',
+					props: { easing: ALIAS('ease-out') },
+				},
+			],
+			manualKeyframeTracks: {
+				OPACITY: {
+					id: 't1',
+					keyframes: [
+						{
+							id: 'k1',
+							timelinePosition: 0,
+							easing: ALIAS('ease-in'),
+							value: { type: 'FLOAT', value: 1 },
+						},
+					],
+				},
+			},
+			animations: {
+				fills: { 0: { tracks: [{ keyframes: [{ easing: ALIAS('spring') }] }] } },
+			},
+		};
+		const { mockFigma } = setupFigma({
+			variables: [
+				variable('ease-out', NAVY),
+				variable('ease-in', NAVY),
+				variable('spring', NAVY),
+				variable('bounce', NAVY),
+				variable('old-bg', NAVY),
+			],
+			pages: [{ name: 'Page 1', children: [animated] }],
+		});
+		Object.assign(mockFigma, {
+			getLocalCustomAnimationStylesAsync: vi.fn(async () => [
+				{
+					type: 'CUSTOM_ANIMATION',
+					animationEntries: [
+						{
+							type: 'FIGMA',
+							id: 'e1',
+							styleId: 'pop',
+							name: 'Pop',
+							props: { easing: ALIAS('bounce') },
+						},
+					],
+				},
+			]),
+		});
+
+		await scanner.scan('scan-1');
+
+		expect(unusedIds()).toEqual(['old-bg']);
+	});
+
+	test('counts variables nested deeper than six levels as used', async () => {
+		const deep = {
+			...node('deep', {}),
+			effects: [
+				{
+					type: 'SHADER',
+					properties: { a: { b: { c: { d: { e: ALIAS('deep-var') } } } } },
+				},
+			],
+		};
+		setupFigma({
+			variables: [variable('deep-var', NAVY), variable('old-bg', NAVY)],
+			pages: [{ name: 'Page 1', children: [deep] }],
+		});
+
+		await scanner.scan('scan-1');
+
+		expect(unusedIds()).toEqual(['old-bg']);
+	});
+
 	describe('deleteVariables', () => {
 		function groupFixture() {
 			const vars = [

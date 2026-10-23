@@ -41,17 +41,21 @@ function collectNodeVariableIds(node: SceneNode, out: Set<string>): void {
 }
 
 function collectStyleVariableIds(style: BaseStyle, out: Set<string>): void {
-	const { paints, effects, layoutGrids, boundVariables } = style as Partial<
-		Record<'paints' | 'effects' | 'layoutGrids' | 'boundVariables', unknown>
+	const { paints, effects, layoutGrids, animationEntries, boundVariables } = style as Partial<
+		Record<
+			'paints' | 'effects' | 'layoutGrids' | 'animationEntries' | 'boundVariables',
+			unknown
+		>
 	>;
 	collectVariableIds(paints, out);
 	collectVariableIds(effects, out);
 	collectVariableIds(layoutGrids, out);
+	collectVariableIds(animationEntries, out);
 	collectVariableIds(boundVariables, out);
 }
 
 function collectSubtreeVariableIds(node: SceneNode, out: Set<string>, visited: Set<string>): void {
-	if (visited.has(node.id)) return;
+	if (visited.has(node.id) || node.removed) return;
 	visited.add(node.id);
 	collectNodeVariableIds(node, out);
 	if ('children' in node) {
@@ -60,35 +64,40 @@ function collectSubtreeVariableIds(node: SceneNode, out: Set<string>, visited: S
 }
 
 // Moving, renaming or locking a layer never changes its variables. Dragging fires these constantly.
+// `parent` is not in here: a layer moved into a part the scan already walked must still be counted.
 const NON_BINDABLE_PROPERTIES = new Set<string>([
 	'x',
 	'y',
 	'relativeTransform',
 	'rotation',
 	'name',
-	'parent',
 	'pluginData',
 	'locked',
 	'expanded',
 ]);
 
+/** Changes that bring a whole subtree of layers, with their variables. */
+function bringsLayers(change: DocumentChange): boolean {
+	return (
+		change.type === 'CREATE' ||
+		(change.type === 'PROPERTY_CHANGE' && change.properties.includes('parent'))
+	);
+}
+
 /**
  * Variables that the changed layers and styles now use. Deleting a layer or style is skipped: it can
- * only make variables unused, so it never makes deleting unsafe.
+ * only make variables unused, so it never makes deleting unsafe. Throws if a change can't be read.
  */
 function collectChangedVariableIds(changes: readonly DocumentChange[]): Set<string> {
 	const ids = new Set<string>();
 	const visited = new Set<string>();
 
 	for (const change of changes) {
-		switch (change.type) {
-			case 'CREATE':
-				// A pasted or duplicated layer brings its children, with their variables.
-				if (!change.node.removed) {
-					collectSubtreeVariableIds(change.node as SceneNode, ids, visited);
-				}
-				break;
-			case 'PROPERTY_CHANGE':
+		try {
+			if (bringsLayers(change)) {
+				// A pasted, duplicated or moved layer brings its children, with their variables.
+				collectSubtreeVariableIds((change as NodeChange).node as SceneNode, ids, visited);
+			} else if (change.type === 'PROPERTY_CHANGE') {
 				if (
 					!change.node.removed &&
 					!visited.has(change.node.id) &&
@@ -97,17 +106,20 @@ function collectChangedVariableIds(changes: readonly DocumentChange[]): Set<stri
 					visited.add(change.node.id);
 					collectNodeVariableIds(change.node as SceneNode, ids);
 				}
-				break;
-			case 'STYLE_CREATE':
-			case 'STYLE_PROPERTY_CHANGE':
+			} else if (change.type === 'STYLE_CREATE' || change.type === 'STYLE_PROPERTY_CHANGE') {
 				if (change.style) collectStyleVariableIds(change.style, ids);
-				break;
+			}
+		} catch (error) {
+			// A layer deleted right after it changed can't be read, and no longer uses anything.
+			if ('node' in change && change.node.removed) continue;
+			throw error;
 		}
 	}
 	return ids;
 }
 
 interface Analysis {
+	variables: Variable[];
 	unused: UnusedVariable[];
 	publishedNames: string[];
 	totalVariables: number;
@@ -120,11 +132,15 @@ class UnusedVariableScanner {
 	private lastDirectlyUsedIds: Set<string> | null = null;
 	/** Variables the last completed scan reported as unused. */
 	private lastUnusedIds: Set<string> = new Set();
-	/** Variables bound while the active scan runs, which it may already have walked past. */
-	private usedDuringScanIds: Set<string> = new Set();
+	/**
+	 * What the scan in progress has found so far. Changes are added too, because the scan may have
+	 * walked past the layer that changed.
+	 */
+	private scanUsedIds: Set<string> | null = null;
+	/** A change during the scan in progress couldn't be read, so its result can't be trusted. */
+	private scanMissedChange: boolean = false;
 	private lastScanId: string | null = null;
 	private isStale: boolean = false;
-	private isDeleting: boolean = false;
 	private isTrackingChanges: boolean = false;
 
 	constructor(notifier: SearchNotifier) {
@@ -145,14 +161,15 @@ class UnusedVariableScanner {
 		// Hidden layers inside instances still count as usage. Skipping them would report variables
 		// as unused when they are not.
 		const releaseTraversalMode = acquireTraversalMode('full');
+		const directlyUsedIds = new Set<string>();
 
 		try {
 			// Loads all pages, which Figma requires before listening for document changes.
 			const targets = await resolveSearchTargets(SCOPE_ALL_PAGES);
-			this.usedDuringScanIds = new Set();
+			this.scanUsedIds = directlyUsedIds;
+			this.scanMissedChange = false;
 			this.startTrackingChanges();
 
-			const directlyUsedIds = new Set<string>();
 			await this.collectStyleBindings(directlyUsedIds);
 
 			const total = targets.reduce((sum, t) => sum + t.topLevelNodes.length, 0);
@@ -192,7 +209,8 @@ class UnusedVariableScanner {
 				}
 			}
 
-			this.usedDuringScanIds.forEach((id) => directlyUsedIds.add(id));
+			// Changes keep arriving while the analysis waits on Figma, and land in `directlyUsedIds`.
+			const usedBeforeAnalysis = new Set(directlyUsedIds);
 			const analysis = await this.analyze(directlyUsedIds);
 			if (!this.isActiveScan(scanId)) return;
 
@@ -208,6 +226,11 @@ class UnusedVariableScanner {
 			};
 			this.notifier.notify('unusedScan.complete', { scanId, result });
 
+			const boundDuringAnalysis = Array.from(directlyUsedIds).some(
+				(id) => !usedBeforeAnalysis.has(id) && this.lastUnusedIds.has(id),
+			);
+			if (boundDuringAnalysis || this.scanMissedChange) this.markStale();
+
 			logger.log(
 				`[UnusedScan] Done: ${analysis.unused.length}/${analysis.totalVariables} unused in ${formatDuration(Date.now() - startTime)}`,
 			);
@@ -216,6 +239,9 @@ class UnusedVariableScanner {
 			this.notifier.notify('unusedScan.error', { scanId, error: message });
 		} finally {
 			releaseTraversalMode();
+			if (this.scanUsedIds === directlyUsedIds) {
+				this.scanUsedIds = null;
+			}
 			if (this.activeScanId === scanId) {
 				this.activeScanId = null;
 			}
@@ -223,59 +249,80 @@ class UnusedVariableScanner {
 	}
 
 	/**
-	 * Deletes the given variables together with the unused variables that point to them. Everything is
-	 * checked again against the current variables first, and a version is saved before anything changes.
+	 * Deletes the given variables together with the unused variables that point to them. A version is
+	 * saved first, and everything is checked again against the current file right before removing.
 	 */
 	async deleteVariables(ids: string[]): Promise<UnusedDeleteResult> {
 		if (!this.lastDirectlyUsedIds) {
 			throw new Error('Scan the file before deleting.');
 		}
-		if (this.isStale) {
-			throw new Error('The file changed since the scan. Rescan before deleting.');
-		}
+		this.throwIfStale();
 
-		const fresh = await this.analyze(this.lastDirectlyUsedIds);
-		const deletable = new Set(fresh.unused.map((v) => v.id));
-		const children = buildChildrenMap(fresh.unused);
-		const toDelete = expandWithDescendants(
-			ids.filter((id) => deletable.has(id)),
-			children,
-		);
-
-		if (toDelete.length === 0) {
+		if ((await this.planDeletion(ids)).toDelete.length === 0) {
 			return { deletedIds: [], versionSaved: false };
 		}
 
 		try {
 			await figma.saveVersionHistoryAsync(
 				VERSION_TITLE,
-				`FindMyVar is about to delete ${toDelete.length} unused variables.`,
+				`FindMyVar is about to delete up to ${ids.length} unused variables.`,
 			);
 		} catch {
 			throw new Error("Couldn't save a version first, so nothing was deleted.");
 		}
 
+		// Someone may have used a variable while the version saved. Check again, then remove with no
+		// awaits in between, so nothing can change after this last check.
+		const { toDelete, children, variables } = await this.planDeletion(ids);
+		// Also catches variables created after the scan, which the stale notice doesn't watch.
+		if (toDelete.some((id) => this.lastDirectlyUsedIds!.has(id))) this.markStale();
+		this.throwIfStale();
+		const byId = new Map(variables.map((v) => [v.id, v]));
+
 		// Delete the variables that point to others first, so no alias is left dangling in between.
 		const ordered = this.dependentsFirst(toDelete, children);
 
 		const deletedIds: string[] = [];
-		this.isDeleting = true;
-		try {
-			figma.commitUndo();
-			for (const id of ordered) {
-				const variable = await figma.variables.getVariableByIdAsync(id);
-				if (variable) {
-					variable.remove();
-					deletedIds.push(id);
-				}
+		figma.commitUndo();
+		for (const id of ordered) {
+			const variable = byId.get(id);
+			if (variable) {
+				variable.remove();
+				deletedIds.push(id);
 			}
-			figma.commitUndo();
-		} finally {
-			this.isDeleting = false;
 		}
+		figma.commitUndo();
 
 		logger.log(`[UnusedScan] Deleted ${deletedIds.length} variables`);
 		return { deletedIds, versionSaved: true };
+	}
+
+	/** Which of `ids` are still unused, plus the unused variables that point to them. */
+	private async planDeletion(ids: string[]): Promise<{
+		toDelete: string[];
+		children: Map<string, string[]>;
+		variables: Variable[];
+	}> {
+		const fresh = await this.analyze(this.lastDirectlyUsedIds!);
+		const deletable = new Set(fresh.unused.map((v) => v.id));
+		const children = buildChildrenMap(fresh.unused);
+		const toDelete = expandWithDescendants(
+			ids.filter((id) => deletable.has(id)),
+			children,
+		);
+		return { toDelete, children, variables: fresh.variables };
+	}
+
+	private throwIfStale(): void {
+		if (this.isStale) {
+			throw new Error('The file changed since the scan. Rescan before deleting.');
+		}
+	}
+
+	private markStale(): void {
+		if (!this.lastScanId || this.isStale) return;
+		this.isStale = true;
+		this.notifier.notify('unusedScan.stale', { scanId: this.lastScanId });
 	}
 
 	private isActiveScan(scanId: string): boolean {
@@ -327,7 +374,12 @@ class UnusedVariableScanner {
 		const publishedIds = await this.findPublished(candidates, variables);
 
 		if (publishedIds.size === 0) {
-			return { unused: candidates, publishedNames: [], totalVariables: variables.length };
+			return {
+				variables,
+				unused: candidates,
+				publishedNames: [],
+				totalVariables: variables.length,
+			};
 		}
 
 		// Published variables may be used in other files. Treat them as used, so they are never
@@ -337,6 +389,7 @@ class UnusedVariableScanner {
 		const unused = findUnusedVariables(graphVariables, graphCollections, usedOrPublished);
 
 		return {
+			variables,
 			unused,
 			publishedNames: candidates.filter((v) => publishedIds.has(v.id)).map((v) => v.name),
 			totalVariables: variables.length,
@@ -370,35 +423,51 @@ class UnusedVariableScanner {
 		if (this.isTrackingChanges) return;
 		this.isTrackingChanges = true;
 
-		figma.on('documentchange', (event: DocumentChangeEvent) => {
-			if (this.isDeleting) return;
+		figma.on('documentchange', (event: DocumentChangeEvent) =>
+			this.handleDocumentChange(event),
+		);
+	}
 
-			const usedIds = collectChangedVariableIds(event.documentChanges);
-			if (usedIds.size === 0) return;
+	private handleDocumentChange(event: DocumentChangeEvent): void {
+		// Pasted or moved layers are walked like the scan walks them: hidden layers in instances count.
+		const releaseTraversalMode = event.documentChanges.some(bringsLayers)
+			? acquireTraversalMode('full')
+			: null;
 
-			usedIds.forEach((id) => {
-				if (this.activeScanId) this.usedDuringScanIds.add(id);
-				// Deleting re-checks against these, so a missed stale notice still can't delete them.
-				this.lastDirectlyUsedIds?.add(id);
-			});
+		let usedIds: Set<string>;
+		try {
+			usedIds = collectChangedVariableIds(event.documentChanges);
+		} catch (error) {
+			// We can't tell what the change uses, so results that may miss it can't be trusted.
+			logger.warn('[UnusedScan] Could not read a change', error);
+			if (this.scanUsedIds) this.scanMissedChange = true;
+			this.markStale();
+			return;
+		} finally {
+			releaseTraversalMode?.();
+		}
 
-			const affectsResults = Array.from(usedIds).some((id) => this.lastUnusedIds.has(id));
-			if (!this.lastScanId || this.isStale || !affectsResults) return;
-
-			this.isStale = true;
-			this.notifier.notify('unusedScan.stale', { scanId: this.lastScanId });
+		usedIds.forEach((id) => {
+			this.scanUsedIds?.add(id);
+			// Deleting re-checks against these, so a missed stale notice still can't delete them.
+			this.lastDirectlyUsedIds?.add(id);
 		});
+		if (Array.from(usedIds).some((id) => this.lastUnusedIds.has(id))) this.markStale();
 	}
 
 	private async collectStyleBindings(out: Set<string>): Promise<void> {
-		const [paintStyles, textStyles, effectStyles, gridStyles] = await Promise.all([
+		const styleLists = await Promise.all([
 			figma.getLocalPaintStylesAsync(),
 			figma.getLocalTextStylesAsync(),
 			figma.getLocalEffectStylesAsync(),
 			figma.getLocalGridStylesAsync(),
+			// Figma versions without Motion don't have animation styles.
+			typeof figma.getLocalCustomAnimationStylesAsync === 'function'
+				? figma.getLocalCustomAnimationStylesAsync()
+				: [],
 		]);
 
-		for (const style of [...paintStyles, ...textStyles, ...effectStyles, ...gridStyles]) {
+		for (const style of styleLists.flat()) {
 			collectStyleVariableIds(style, out);
 		}
 	}

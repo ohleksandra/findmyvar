@@ -245,6 +245,38 @@ describe('extractBindings: bindings outside boundVariables', () => {
 	});
 });
 
+describe('extractBindings: Motion and deep nesting', () => {
+	test('finds Motion easing once, although `animations` repeats the manual keyframes', () => {
+		const keyframes = [{ id: 'k1', timelinePosition: 0, easing: ALIAS('var-1') }];
+		const node = {
+			id: 'node-1',
+			name: 'Node',
+			type: 'FRAME',
+			boundVariables: {},
+			manualKeyframeTracks: { OPACITY: { id: 't1', keyframes } },
+			animations: { OPACITY: { tracks: [{ keyframes }] } },
+		} as unknown as SceneNode;
+
+		expect(extractBindings(node, 'var-1')).toEqual([
+			'manualKeyframeTracks.OPACITY.keyframes[0].easing',
+		]);
+	});
+
+	test('finds an alias nested deeper than six levels', () => {
+		const node = {
+			id: 'node-1',
+			name: 'Node',
+			type: 'FRAME',
+			boundVariables: {},
+			effects: [
+				{ type: 'SHADER', properties: { a: { b: { c: { d: { e: ALIAS('var-1') } } } } } },
+			],
+		} as unknown as SceneNode;
+
+		expect(extractBindings(node, 'var-1')).toEqual(['effects[0].properties.a.b.c.d.e']);
+	});
+});
+
 describe('collectVariableIds', () => {
 	test('collects ids from direct, array, nested-array and object bindings', () => {
 		const ids = new Set<string>();
