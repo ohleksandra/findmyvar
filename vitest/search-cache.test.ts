@@ -73,7 +73,7 @@ describe('SearchCache', () => {
 			expect(cache.get(key2)).toBeUndefined();
 		});
 
-		test('clear(variableId) attempts to delete by key (known limitation)', () => {
+		test('clear(variableId) removes only the entries for that variable', () => {
 			const key1 = cache.keyFor('v1', 'all-pages');
 			const key2 = cache.keyFor('v2', 'all-pages');
 			cache.set(key1, {
@@ -93,7 +93,7 @@ describe('SearchCache', () => {
 
 			cache.clear('v1');
 
-			expect(cache.get(key1)).toBeDefined();
+			expect(cache.get(key1)).toBeUndefined();
 			expect(cache.get(key2)).toBeDefined();
 		});
 	});

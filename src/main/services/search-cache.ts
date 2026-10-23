@@ -62,14 +62,12 @@ class SearchCache {
 	}
 
 	clear(variableId?: string): void {
-		if (this.pendingChangeTimer !== null) {
-			clearTimeout(this.pendingChangeTimer);
-			this.pendingChangeTimer = null;
-			this.pendingChangeHasRelevant = false;
-		}
-
+		// A pending document change stays pending: a search already running must still see it.
 		if (variableId) {
-			this.cache.delete(variableId);
+			// Keys are `id:scope`, plus the page or selection.
+			for (const key of Array.from(this.cache.keys())) {
+				if (key.startsWith(`${variableId}:`)) this.cache.delete(key);
+			}
 		} else {
 			this.cache.clear();
 		}
@@ -78,6 +76,8 @@ class SearchCache {
 	isValid(entry: CacheEntry): boolean {
 		if (Date.now() - entry.timestamp > CACHE_TTL) return false;
 		if (entry.documentChangeCount !== this.documentChangeCount) return false;
+		// A change within the debounce window isn't counted yet, but the entry is already old.
+		if (this.pendingChangeHasRelevant) return false;
 
 		if (entry.scope === SCOPE_SELECTION) {
 			return entry.selectionKey === this.getSelectionKey();
