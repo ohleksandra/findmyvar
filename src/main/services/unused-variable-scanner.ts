@@ -8,8 +8,12 @@ import type {
 } from '../../shared/rpc-types';
 import { SCOPE_ALL_PAGES } from '../../shared/constants';
 import { buildChildrenMap, expandWithDescendants } from '../../shared/unused-tree';
-import { collectPrototypeVariableIds, collectVariableIds } from './binding-extractor';
-import { findNodesWithBindingsAsync, hasBoundVariables } from './node-traverser';
+import {
+	collectPrototypeVariableIds,
+	collectVariableIds,
+	forEachNestedBinding,
+} from './binding-extractor';
+import { findNodesWithBindingsAsync, mayHaveBindings } from './node-traverser';
 import { resolveSearchTargets } from './search-target-resolver';
 import { findUnusedVariables, type GraphCollection, type GraphVariable } from './variable-graph';
 import { acquireTraversalMode } from './traversal-mode';
@@ -26,7 +30,7 @@ function hasReactions(node: SceneNode): boolean {
 
 /** Layers whose variables matter: bound to a property, or used in a prototype interaction. */
 function usesVariables(node: SceneNode): boolean {
-	return hasBoundVariables(node) || hasReactions(node);
+	return mayHaveBindings(node) || hasReactions(node);
 }
 
 interface Analysis {
@@ -101,6 +105,9 @@ class UnusedVariableScanner {
 						collectVariableIds(
 							(node as WithBoundVariables).boundVariables,
 							directlyUsedIds,
+						);
+						forEachNestedBinding(node, (_field, variableId) =>
+							directlyUsedIds.add(variableId),
 						);
 						collectPrototypeVariableIds(
 							(node as WithReactions).reactions,

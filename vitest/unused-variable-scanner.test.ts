@@ -306,6 +306,76 @@ describe('UnusedVariableScanner', () => {
 		expect(mockNotify).toHaveBeenCalledWith('unusedScan.stale', { scanId: 'scan-1' });
 	});
 
+	test('counts variables used only in gradient stops or component property defaults as used', async () => {
+		const banner = {
+			...node('banner', {}),
+			fills: [
+				{
+					type: 'GRADIENT_LINEAR',
+					gradientStops: [
+						{
+							position: 0,
+							color: NAVY,
+							boundVariables: { color: ALIAS('gradient-start') },
+						},
+						{ position: 1, color: NAVY },
+					],
+				},
+			],
+		};
+		const buttonSet = {
+			...node('button-set', {}),
+			type: 'COMPONENT_SET',
+			componentPropertyDefinitions: {
+				'Label#1:2': {
+					type: 'TEXT',
+					defaultValue: 'Button',
+					boundVariables: { value: ALIAS('button-label') },
+				},
+			},
+		};
+		setupFigma({
+			variables: [
+				variable('gradient-start', NAVY),
+				variable('button-label', 'Button'),
+				variable('old-bg', NAVY),
+			],
+			pages: [{ name: 'Page 1', children: [banner, buttonSet] }],
+		});
+
+		await scanner.scan('scan-1');
+
+		expect(unusedIds()).toEqual(['old-bg']);
+	});
+
+	test('counts variables bound to gradient stops in paint styles as used', async () => {
+		setupFigma({
+			variables: [variable('gradient-end', NAVY), variable('old-bg', NAVY)],
+			pages: [{ name: 'Page 1', children: [] }],
+			paintStyles: [
+				{
+					paints: [
+						{
+							type: 'GRADIENT_RADIAL',
+							gradientStops: [
+								{ position: 0, color: NAVY },
+								{
+									position: 1,
+									color: NAVY,
+									boundVariables: { color: ALIAS('gradient-end') },
+								},
+							],
+						},
+					],
+				},
+			],
+		});
+
+		await scanner.scan('scan-1');
+
+		expect(unusedIds()).toEqual(['old-bg']);
+	});
+
 	describe('deleteVariables', () => {
 		function groupFixture() {
 			const vars = [

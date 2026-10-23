@@ -223,7 +223,8 @@ const UnusedResults = () => {
 			)}
 
 			<p className="border-t px-4 py-3 text-muted-foreground">
-				Doesn't check prototypes or component properties yet.
+				Checks layers (hidden ones too), styles, prototypes and component properties in this
+				file.
 			</p>
 
 			<SelectionBar />

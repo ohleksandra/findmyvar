@@ -135,6 +135,116 @@ describe('extractBindings', () => {
 	});
 });
 
+describe('extractBindings: bindings outside boundVariables', () => {
+	const GRADIENT = (stopVariableIds: (string | null)[]) => ({
+		type: 'GRADIENT_LINEAR',
+		gradientTransform: [
+			[1, 0, 0],
+			[0, 1, 0],
+		],
+		gradientStops: stopVariableIds.map((id, i) => ({
+			position: i,
+			color: { r: 0, g: 0, b: 0, a: 1 },
+			...(id ? { boundVariables: { color: ALIAS(id) } } : {}),
+		})),
+	});
+
+	function nodeWith(props: Record<string, unknown>): SceneNode {
+		return {
+			id: 'node-1',
+			name: 'Node',
+			type: 'RECTANGLE',
+			boundVariables: {},
+			...props,
+		} as unknown as SceneNode;
+	}
+
+	test('finds a variable bound to a gradient stop', () => {
+		const node = nodeWith({ fills: [GRADIENT([null, 'var-1'])] });
+		expect(extractBindings(node, 'var-1')).toEqual(['fills[0].gradientStops[1].color']);
+	});
+
+	test('finds gradient stops in strokes', () => {
+		const node = nodeWith({ strokes: [GRADIENT(['var-1'])] });
+		expect(extractBindings(node, 'var-1')).toEqual(['strokes[0].gradientStops[0].color']);
+	});
+
+	test('reports a solid fill once, although Figma lists it on the node and on the paint', () => {
+		const node = nodeWith({
+			boundVariables: { fills: [ALIAS('var-1')] },
+			fills: [{ type: 'SOLID', boundVariables: { color: ALIAS('var-1') } }],
+		});
+		expect(extractBindings(node, 'var-1')).toEqual(['fills[0]']);
+	});
+
+	test('finds effect and layout grid fields', () => {
+		const node = nodeWith({
+			effects: [{ type: 'DROP_SHADOW', boundVariables: { radius: ALIAS('var-1') } }],
+			layoutGrids: [{ pattern: 'COLUMNS', boundVariables: { gutterSize: ALIAS('var-1') } }],
+		});
+		expect(extractBindings(node, 'var-1')).toEqual([
+			'effects[0].radius',
+			'layoutGrids[0].gutterSize',
+		]);
+	});
+
+	test('reads each styled range when text has several fills', () => {
+		const getStyledTextSegments = vi.fn(() => [
+			{ characters: 'Hello ', fills: [{ type: 'SOLID' }] },
+			{ characters: 'world', fills: [GRADIENT(['var-1'])] },
+		]);
+		const node = nodeWith({
+			type: 'TEXT',
+			fills: Symbol('mixed'),
+			getStyledTextSegments,
+		});
+
+		expect(extractBindings(node, 'var-1')).toEqual([
+			'textRangeFills[1][0].gradientStops[0].color',
+		]);
+		expect(getStyledTextSegments).toHaveBeenCalledWith(['fills']);
+	});
+
+	test('finds the default value of a component property', () => {
+		const node = nodeWith({
+			type: 'COMPONENT_SET',
+			componentPropertyDefinitions: {
+				'Label#1:2': {
+					type: 'TEXT',
+					defaultValue: 'Button',
+					boundVariables: { value: ALIAS('var-1') },
+				},
+				'Show icon#1:3': { type: 'BOOLEAN', defaultValue: true },
+			},
+		});
+		expect(extractBindings(node, 'var-1')).toEqual([
+			'componentPropertyDefinitions.Label#1:2.value',
+		]);
+	});
+
+	test('does not read component properties on a variant, where Figma throws', () => {
+		const variant = nodeWith({ type: 'COMPONENT', parent: { type: 'COMPONENT_SET' } });
+		Object.defineProperty(variant, 'componentPropertyDefinitions', {
+			get: () => {
+				throw new Error(
+					'Can only get definitions of a component set or non-variant component',
+				);
+			},
+		});
+		expect(extractBindings(variant, 'var-1')).toBeNull();
+	});
+
+	test('skips a component set whose definitions cannot be read', () => {
+		const node = nodeWith({ type: 'COMPONENT_SET', fills: [GRADIENT(['var-1'])] });
+		Object.defineProperty(node, 'componentPropertyDefinitions', {
+			get: () => {
+				throw new Error('Component set has existing errors');
+			},
+		});
+		expect(extractBindings(node, 'var-1')).toEqual(['fills[0].gradientStops[0].color']);
+	});
+});
+
 describe('collectVariableIds', () => {
 	test('collects ids from direct, array, nested-array and object bindings', () => {
 		const ids = new Set<string>();

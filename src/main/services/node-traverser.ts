@@ -4,6 +4,21 @@ function hasBoundVariables(node: SceneNode): boolean {
 	return 'boundVariables' in node && node.boundVariables !== null;
 }
 
+/**
+ * Layers that can hold a variable: in `boundVariables`, or nested in paints, effects, layout grids
+ * or component property definitions (see `forEachNestedBinding`). Components and component sets
+ * have fills, so they're included.
+ */
+function mayHaveBindings(node: SceneNode): boolean {
+	return (
+		hasBoundVariables(node) ||
+		'fills' in node ||
+		'strokes' in node ||
+		'effects' in node ||
+		'layoutGrids' in node
+	);
+}
+
 function yieldToMain(): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, 0));
 }
@@ -11,7 +26,7 @@ function yieldToMain(): Promise<void> {
 async function* findNodesWithBindingsAsync(
 	node: SceneNode,
 	signal: { cancelled: boolean },
-	include: (node: SceneNode) => boolean = hasBoundVariables,
+	include: (node: SceneNode) => boolean = mayHaveBindings,
 ): AsyncGenerator<SceneNode, void, void> {
 	let nodesVisited = 0;
 
@@ -41,4 +56,4 @@ async function* findNodesWithBindingsAsync(
 	yield* traverse(node);
 }
 
-export { findNodesWithBindingsAsync, hasBoundVariables, yieldToMain };
+export { findNodesWithBindingsAsync, hasBoundVariables, mayHaveBindings, yieldToMain };
