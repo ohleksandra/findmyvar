@@ -110,7 +110,7 @@ const SearchControl = () => {
 				<CommandInput
 					placeholder={
 						isUnusedMode
-							? 'Filter unused variables'
+							? 'Filter by name or collection'
 							: `Search variables or type ${ACTION_PREFIX} for actions`
 					}
 					value={inputValue}
