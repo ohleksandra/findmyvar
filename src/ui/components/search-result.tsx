@@ -1,6 +1,7 @@
 import { usePlugin } from '@/context/plugin-context';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
 import { useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { VariableUsage as VariableUsageType } from '../../shared/rpc-types';
@@ -52,8 +53,8 @@ const VirtualizedResultList = ({ results }: { results: VariableUsageType[] }) =>
 };
 
 const SearchResult = () => {
-	const { state } = usePlugin();
-	const { searchResults, searchVariable, isSearchCompleted } = state;
+	const { state, actions } = usePlugin();
+	const { searchResults, searchVariable, isSearchCompleted, isSearchCancelled } = state;
 
 	const pagesCount = useMemo(() => {
 		const uniquePages = new Set(searchResults.map((result) => result.pageName));
@@ -62,13 +63,23 @@ const SearchResult = () => {
 
 	return (
 		<div className="flex flex-col relative">
-			{isSearchCompleted && (
-				<div className="flex px-4 h-10 items-center border-b sticky top-0 bg-background z-20">
+			{(isSearchCompleted || isSearchCancelled) && (
+				<div className="flex px-4 h-10 items-center gap-x-2 border-b sticky top-0 bg-background z-20">
 					<SearchResultSummary
 						variable={searchVariable!}
 						resultCount={searchResults.length}
 						pagesCount={pagesCount}
+						isPartial={isSearchCancelled}
 					/>
+					{isSearchCancelled && (
+						<Button
+							variant="secondary"
+							className="ml-auto"
+							onClick={() => void actions.startSearch(searchVariable!)}
+						>
+							Search again
+						</Button>
+					)}
 				</div>
 			)}
 			<Accordion type="multiple" className="w-full" aria-label="Search results by page">

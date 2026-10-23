@@ -15,6 +15,7 @@ export function PluginProvider({ children }: { children: React.ReactNode }) {
 			searchVariable: s.searchVariable,
 			isSearching: s.isSearching,
 			isSearchCompleted: s.isSearchCompleted,
+			isSearchCancelled: s.isSearchCancelled,
 			progress: s.progress,
 			error: s.error,
 			cached: s.cached,

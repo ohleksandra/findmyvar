@@ -6,9 +6,11 @@ type Props = {
 	variable: Variable;
 	resultCount: number;
 	pagesCount: number;
+	/** The search was stopped early, so counts are only what was found so far. */
+	isPartial?: boolean;
 };
 
-const SearchResultSummary = ({ variable, resultCount, pagesCount }: Props) => {
+const SearchResultSummary = ({ variable, resultCount, pagesCount, isPartial = false }: Props) => {
 	return (
 		<div className="flex gap-x-1 items-center min-w-0">
 			<Badge variant="selected" className="max-w-42 justify-start h-5 pl-0 pr-1.5">
@@ -19,6 +21,7 @@ const SearchResultSummary = ({ variable, resultCount, pagesCount }: Props) => {
 				<span className="text-foreground font-strong">{resultCount}</span> uses on{' '}
 				<span className="text-foreground font-strong">{pagesCount}</span>{' '}
 				{pagesCount === 1 ? 'page' : 'pages'}
+				{isPartial && ' so far'}
 			</p>
 		</div>
 	);

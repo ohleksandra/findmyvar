@@ -36,6 +36,7 @@ interface PluginStore {
 	searchResults: VariableUsage[];
 	searchQuery: string;
 	isSearchCompleted: boolean;
+	isSearchCancelled: boolean;
 	scope: SearchScope;
 	activeSearchId: string | null;
 
@@ -73,6 +74,7 @@ export const usePluginStore = create<PluginStore>()(
 			searchResults: [],
 			searchQuery: '',
 			isSearchCompleted: false,
+			isSearchCancelled: false,
 			scope: DEFAULT_SCOPE,
 			activeSearchId: null,
 
@@ -98,6 +100,8 @@ export const usePluginStore = create<PluginStore>()(
 
 				set({
 					isSearching: true,
+					isSearchCompleted: false,
+					isSearchCancelled: false,
 					searchVariable: variable,
 					scope: currentScope,
 					error: null,
@@ -127,7 +131,8 @@ export const usePluginStore = create<PluginStore>()(
 				try {
 					await callPlugin('variableSearch.cancel');
 				} finally {
-					set({ isSearching: false, isSearchCompleted: true, activeSearchId: null });
+					// Not completed: results so far are partial, so an empty list doesn't mean unused.
+					set({ isSearching: false, isSearchCancelled: true, activeSearchId: null });
 				}
 			},
 

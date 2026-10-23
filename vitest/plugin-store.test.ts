@@ -42,6 +42,7 @@ describe('PluginStore', () => {
 			searchResults: [],
 			searchQuery: '',
 			isSearchCompleted: false,
+			isSearchCancelled: false,
 			scope: 'all-pages',
 			activeSearchId: null,
 		});
@@ -221,8 +222,37 @@ describe('PluginStore', () => {
 
 			usePluginStore.getState()._appendResults(searchId, [], true);
 
-			expect(usePluginStore.getState().isSearchCompleted).toBe(true);
+			expect(usePluginStore.getState().isSearchCompleted).toBe(false);
 			expect(usePluginStore.getState().recentSearches).toHaveLength(0);
+		});
+
+		test('marks the search as cancelled, not completed', async () => {
+			const usePluginStore = await resetStore();
+			usePluginStore.setState({ activeSearchId: 'search-1', isSearching: true });
+
+			mockCallPlugin.mockResolvedValue({ cancelled: true });
+
+			await usePluginStore.getState().cancelSearch();
+
+			expect(usePluginStore.getState().isSearchCancelled).toBe(true);
+			expect(usePluginStore.getState().isSearchCompleted).toBe(false);
+		});
+
+		test('a new search clears the cancelled and completed flags', async () => {
+			const usePluginStore = await resetStore();
+			usePluginStore.setState({ isSearchCancelled: true, isSearchCompleted: true });
+
+			mockCallPlugin.mockResolvedValue({ started: true });
+
+			await usePluginStore.getState().startSearch({
+				id: 'var-1',
+				name: 'Test Variable',
+				resolvedType: 'COLOR' as const,
+				hiddenFromPublishing: false,
+			});
+
+			expect(usePluginStore.getState().isSearchCancelled).toBe(false);
+			expect(usePluginStore.getState().isSearchCompleted).toBe(false);
 		});
 	});
 

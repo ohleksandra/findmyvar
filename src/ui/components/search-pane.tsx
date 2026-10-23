@@ -3,17 +3,20 @@ import ProgressPane from './progress-pane';
 import Intro from './intro';
 import SearchResult from './search-result';
 import NoResults from './no-results';
+import SearchStopped from './search-stopped';
 import UnusedPane from './unused/unused-pane';
 import { useUnusedStore } from '@/store/unused-store';
 
-type SearchStatus = 'idle' | 'searching' | 'has-results' | 'empty';
+type SearchStatus = 'idle' | 'searching' | 'has-results' | 'empty' | 'stopped';
 
 function deriveStatus(
 	isSearching: boolean,
 	isSearchCompleted: boolean,
+	isSearchCancelled: boolean,
 	resultCount: number,
 ): SearchStatus {
 	if (isSearching) return 'searching';
+	if (isSearchCancelled && resultCount === 0) return 'stopped';
 	if (isSearchCompleted && resultCount === 0) return 'empty';
 	if (resultCount > 0) return 'has-results';
 	return 'idle';
@@ -25,6 +28,7 @@ const SearchPane = () => {
 	const status = deriveStatus(
 		state.isSearching,
 		state.isSearchCompleted,
+		state.isSearchCancelled,
 		state.searchResults.length,
 	);
 
@@ -55,6 +59,7 @@ const SearchPane = () => {
 			{state.searchResults.length > 0 && <SearchResult />}
 			{status === 'idle' && <Intro />}
 			{status === 'empty' && <NoResults />}
+			{status === 'stopped' && <SearchStopped />}
 		</div>
 	);
 };
