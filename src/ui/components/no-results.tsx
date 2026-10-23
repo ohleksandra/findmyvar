@@ -1,13 +1,9 @@
 import { usePlugin } from '@/context/plugin-context';
 import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { DetachSmallIcon } from './icons/ui3';
 import { SCOPE_ALL_PAGES } from '../../shared/constants';
-import { useUnusedStore } from '@/store/unused-store';
 
 const NoResults = () => {
 	const { state } = usePlugin();
-	const startUnusedScan = useUnusedStore((s) => s.startScan);
 	const { searchQuery, searchVariable, scope } = state;
 
 	const displayQuery = searchVariable?.name || searchQuery || '';
@@ -24,21 +20,7 @@ const NoResults = () => {
 						<span className="truncate">{displayQuery}</span>
 					</Badge>
 				</div>
-				{searchedWholeFile ? (
-					<>
-						<p className="text-center text-muted-foreground">
-							Other variables may still reference it. Check what's truly unused.
-						</p>
-						<Button
-							variant="secondary"
-							className="mt-1"
-							onClick={() => void startUnusedScan()}
-						>
-							<DetachSmallIcon aria-hidden="true" />
-							Find unused variables
-						</Button>
-					</>
-				) : (
+				{!searchedWholeFile && (
 					<p className="text-center text-muted-foreground">
 						This variable isn't used in the current scope. Try searching all pages to
 						check the whole file.
