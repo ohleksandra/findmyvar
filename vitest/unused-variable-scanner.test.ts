@@ -290,20 +290,144 @@ describe('UnusedVariableScanner', () => {
 		expect(mockFigma.skipInvisibleInstanceChildren).toBe(true);
 	});
 
-	test('reports when bindings change after a scan', async () => {
-		const { emitChange } = setupFigma({
-			variables: [],
-			pages: [{ name: 'Page 1', children: [] }],
-		});
-		await scanner.scan('scan-1');
+	describe('noticing changes after a scan', () => {
+		const staleNotices = () =>
+			mockNotify.mock.calls.filter((c) => c[0] === 'unusedScan.stale').length;
 
-		emitChange({ documentChanges: [{ type: 'PROPERTY_CHANGE', properties: ['x'] }] });
-		expect(mockNotify).not.toHaveBeenCalledWith('unusedScan.stale', expect.anything());
+		async function scanWithOneUnused() {
+			const figmaMock = setupFigma({
+				variables: [variable('button-bg', NAVY), variable('old-bg', NAVY)],
+				pages: [
+					{
+						name: 'Page 1',
+						children: [node('button', { fills: [ALIAS('button-bg')] })],
+					},
+				],
+			});
+			await scanner.scan('scan-1');
+			expect(unusedIds()).toEqual(['old-bg']);
+			return figmaMock;
+		}
 
-		emitChange({
-			documentChanges: [{ type: 'PROPERTY_CHANGE', properties: ['boundVariables'] }],
+		test('marks results out of date when an unused variable gets bound', async () => {
+			const { emitChange } = await scanWithOneUnused();
+
+			emitChange({
+				documentChanges: [
+					{
+						type: 'PROPERTY_CHANGE',
+						node: node('card', { fills: [ALIAS('old-bg')] }),
+						properties: ['fills'],
+					},
+				],
+			});
+
+			expect(mockNotify).toHaveBeenCalledWith('unusedScan.stale', { scanId: 'scan-1' });
+			await expect(scanner.deleteVariables(['old-bg'])).rejects.toThrow(
+				'changed since the scan',
+			);
 		});
-		expect(mockNotify).toHaveBeenCalledWith('unusedScan.stale', { scanId: 'scan-1' });
+
+		test('ignores binding a variable the scan already counted as used', async () => {
+			const { emitChange } = await scanWithOneUnused();
+
+			emitChange({
+				documentChanges: [
+					{
+						type: 'PROPERTY_CHANGE',
+						node: node('card', { fills: [ALIAS('button-bg')] }),
+						properties: ['fills'],
+					},
+				],
+			});
+
+			expect(staleNotices()).toBe(0);
+		});
+
+		test('ignores moving, adding or deleting layers that use no unused variable', async () => {
+			const { emitChange } = await scanWithOneUnused();
+
+			emitChange({
+				documentChanges: [
+					{ type: 'PROPERTY_CHANGE', node: node('button', {}), properties: ['x', 'y'] },
+					{ type: 'CREATE', node: node('copy', {}, [node('label', {})]) },
+					{ type: 'DELETE', node: { id: 'gone', type: 'FRAME', removed: true } },
+					{
+						type: 'PROPERTY_CHANGE',
+						node: { id: 'gone', type: 'FRAME', removed: true },
+						properties: ['fills'],
+					},
+					{ type: 'STYLE_DELETE', style: null },
+				],
+			});
+
+			expect(staleNotices()).toBe(0);
+		});
+
+		test("notices an unused variable inside a pasted layer's children", async () => {
+			const { emitChange } = await scanWithOneUnused();
+			const hero = {
+				...node('hero', {}),
+				fills: [
+					{
+						type: 'GRADIENT_LINEAR',
+						gradientStops: [
+							{
+								position: 0,
+								color: NAVY,
+								boundVariables: { color: ALIAS('old-bg') },
+							},
+						],
+					},
+				],
+			};
+
+			emitChange({ documentChanges: [{ type: 'CREATE', node: node('pasted', {}, [hero]) }] });
+
+			expect(staleNotices()).toBe(1);
+		});
+
+		test('notices a style that starts using an unused variable', async () => {
+			const { emitChange } = await scanWithOneUnused();
+
+			emitChange({
+				documentChanges: [
+					{
+						type: 'STYLE_PROPERTY_CHANGE',
+						style: {
+							paints: [{ type: 'SOLID', boundVariables: { color: ALIAS('old-bg') } }],
+						},
+						properties: ['paints'],
+					},
+				],
+			});
+
+			expect(staleNotices()).toBe(1);
+		});
+
+		test('counts a variable bound while the scan runs as used', async () => {
+			const { mockFigma, emitChange } = setupFigma({
+				variables: [variable('new-bg', NAVY), variable('old-bg', NAVY)],
+				pages: [{ name: 'Page 1', children: [] }],
+			});
+			// The scan is past the layer when someone binds `new-bg` to it.
+			mockFigma.getLocalPaintStylesAsync.mockImplementation(async () => {
+				emitChange({
+					documentChanges: [
+						{
+							type: 'PROPERTY_CHANGE',
+							node: node('card', { fills: [ALIAS('new-bg')] }),
+							properties: ['fills'],
+						},
+					],
+				});
+				return [];
+			});
+
+			await scanner.scan('scan-1');
+
+			expect(unusedIds()).toEqual(['old-bg']);
+		});
 	});
 
 	test('counts variables used only in gradient stops or component property defaults as used', async () => {
@@ -430,10 +554,14 @@ describe('UnusedVariableScanner', () => {
 			expect(vars[1].remove).not.toHaveBeenCalled();
 		});
 
-		test('refuses to delete when the file changed since the scan', async () => {
+		test('refuses to delete when the file started using it since the scan', async () => {
 			const { emitChange } = groupFixture();
 			await scanner.scan('scan-1');
-			emitChange({ documentChanges: [{ type: 'DELETE' }] });
+			emitChange({
+				documentChanges: [
+					{ type: 'CREATE', node: node('banner', { fills: [ALIAS('brand-bg')] }) },
+				],
+			});
 
 			await expect(scanner.deleteVariables(['brand-bg'])).rejects.toThrow(
 				'Rescan before deleting',

@@ -33,6 +33,80 @@ function usesVariables(node: SceneNode): boolean {
 	return mayHaveBindings(node) || hasReactions(node);
 }
 
+/** Adds every variable a layer uses, in its properties, paints, component properties or prototype. */
+function collectNodeVariableIds(node: SceneNode, out: Set<string>): void {
+	collectVariableIds((node as WithBoundVariables).boundVariables, out);
+	forEachNestedBinding(node, (_field, variableId) => out.add(variableId));
+	collectPrototypeVariableIds((node as WithReactions).reactions, out);
+}
+
+function collectStyleVariableIds(style: BaseStyle, out: Set<string>): void {
+	const { paints, effects, layoutGrids, boundVariables } = style as Partial<
+		Record<'paints' | 'effects' | 'layoutGrids' | 'boundVariables', unknown>
+	>;
+	collectVariableIds(paints, out);
+	collectVariableIds(effects, out);
+	collectVariableIds(layoutGrids, out);
+	collectVariableIds(boundVariables, out);
+}
+
+function collectSubtreeVariableIds(node: SceneNode, out: Set<string>, visited: Set<string>): void {
+	if (visited.has(node.id)) return;
+	visited.add(node.id);
+	collectNodeVariableIds(node, out);
+	if ('children' in node) {
+		for (const child of node.children) collectSubtreeVariableIds(child, out, visited);
+	}
+}
+
+// Moving, renaming or locking a layer never changes its variables. Dragging fires these constantly.
+const NON_BINDABLE_PROPERTIES = new Set<string>([
+	'x',
+	'y',
+	'relativeTransform',
+	'rotation',
+	'name',
+	'parent',
+	'pluginData',
+	'locked',
+	'expanded',
+]);
+
+/**
+ * Variables that the changed layers and styles now use. Deleting a layer or style is skipped: it can
+ * only make variables unused, so it never makes deleting unsafe.
+ */
+function collectChangedVariableIds(changes: readonly DocumentChange[]): Set<string> {
+	const ids = new Set<string>();
+	const visited = new Set<string>();
+
+	for (const change of changes) {
+		switch (change.type) {
+			case 'CREATE':
+				// A pasted or duplicated layer brings its children, with their variables.
+				if (!change.node.removed) {
+					collectSubtreeVariableIds(change.node as SceneNode, ids, visited);
+				}
+				break;
+			case 'PROPERTY_CHANGE':
+				if (
+					!change.node.removed &&
+					!visited.has(change.node.id) &&
+					change.properties.some((property) => !NON_BINDABLE_PROPERTIES.has(property))
+				) {
+					visited.add(change.node.id);
+					collectNodeVariableIds(change.node as SceneNode, ids);
+				}
+				break;
+			case 'STYLE_CREATE':
+			case 'STYLE_PROPERTY_CHANGE':
+				if (change.style) collectStyleVariableIds(change.style, ids);
+				break;
+		}
+	}
+	return ids;
+}
+
 interface Analysis {
 	unused: UnusedVariable[];
 	publishedNames: string[];
@@ -42,8 +116,12 @@ interface Analysis {
 class UnusedVariableScanner {
 	private activeScanId: string | null = null;
 	private notifier: SearchNotifier;
-	/** Variables bound to layers or styles in the last completed scan. */
+	/** Variables bound to layers or styles in the last completed scan, plus any bound since. */
 	private lastDirectlyUsedIds: Set<string> | null = null;
+	/** Variables the last completed scan reported as unused. */
+	private lastUnusedIds: Set<string> = new Set();
+	/** Variables bound while the active scan runs, which it may already have walked past. */
+	private usedDuringScanIds: Set<string> = new Set();
 	private lastScanId: string | null = null;
 	private isStale: boolean = false;
 	private isDeleting: boolean = false;
@@ -69,10 +147,14 @@ class UnusedVariableScanner {
 		const releaseTraversalMode = acquireTraversalMode('full');
 
 		try {
+			// Loads all pages, which Figma requires before listening for document changes.
+			const targets = await resolveSearchTargets(SCOPE_ALL_PAGES);
+			this.usedDuringScanIds = new Set();
+			this.startTrackingChanges();
+
 			const directlyUsedIds = new Set<string>();
 			await this.collectStyleBindings(directlyUsedIds);
 
-			const targets = await resolveSearchTargets(SCOPE_ALL_PAGES);
 			const total = targets.reduce((sum, t) => sum + t.topLevelNodes.length, 0);
 			let processed = 0;
 
@@ -102,17 +184,7 @@ class UnusedVariableScanner {
 							signal.cancelled = true;
 							return;
 						}
-						collectVariableIds(
-							(node as WithBoundVariables).boundVariables,
-							directlyUsedIds,
-						);
-						forEachNestedBinding(node, (_field, variableId) =>
-							directlyUsedIds.add(variableId),
-						);
-						collectPrototypeVariableIds(
-							(node as WithReactions).reactions,
-							directlyUsedIds,
-						);
+						collectNodeVariableIds(node, directlyUsedIds);
 					}
 
 					processed++;
@@ -120,13 +192,14 @@ class UnusedVariableScanner {
 				}
 			}
 
+			this.usedDuringScanIds.forEach((id) => directlyUsedIds.add(id));
 			const analysis = await this.analyze(directlyUsedIds);
 			if (!this.isActiveScan(scanId)) return;
 
 			this.lastDirectlyUsedIds = directlyUsedIds;
+			this.lastUnusedIds = new Set(analysis.unused.map((v) => v.id));
 			this.lastScanId = scanId;
 			this.isStale = false;
-			this.startTrackingChanges();
 
 			const result: UnusedScanResult = {
 				totalVariables: analysis.totalVariables,
@@ -298,21 +371,19 @@ class UnusedVariableScanner {
 		this.isTrackingChanges = true;
 
 		figma.on('documentchange', (event: DocumentChangeEvent) => {
-			if (!this.lastScanId || this.isStale || this.isDeleting) return;
+			if (this.isDeleting) return;
 
-			const relevant = event.documentChanges.some(
-				(change) =>
-					change.type === 'CREATE' ||
-					change.type === 'DELETE' ||
-					change.type === 'STYLE_CREATE' ||
-					change.type === 'STYLE_DELETE' ||
-					change.type === 'STYLE_PROPERTY_CHANGE' ||
-					(change.type === 'PROPERTY_CHANGE' &&
-						(change.properties as string[]).some(
-							(property) => property === 'boundVariables' || property === 'reactions',
-						)),
-			);
-			if (!relevant) return;
+			const usedIds = collectChangedVariableIds(event.documentChanges);
+			if (usedIds.size === 0) return;
+
+			usedIds.forEach((id) => {
+				if (this.activeScanId) this.usedDuringScanIds.add(id);
+				// Deleting re-checks against these, so a missed stale notice still can't delete them.
+				this.lastDirectlyUsedIds?.add(id);
+			});
+
+			const affectsResults = Array.from(usedIds).some((id) => this.lastUnusedIds.has(id));
+			if (!this.lastScanId || this.isStale || !affectsResults) return;
 
 			this.isStale = true;
 			this.notifier.notify('unusedScan.stale', { scanId: this.lastScanId });
@@ -327,20 +398,8 @@ class UnusedVariableScanner {
 			figma.getLocalGridStylesAsync(),
 		]);
 
-		for (const style of paintStyles) {
-			collectVariableIds(style.paints, out);
-			collectVariableIds((style as WithBoundVariables).boundVariables, out);
-		}
-		for (const style of textStyles) {
-			collectVariableIds((style as WithBoundVariables).boundVariables, out);
-		}
-		for (const style of effectStyles) {
-			collectVariableIds(style.effects, out);
-			collectVariableIds((style as WithBoundVariables).boundVariables, out);
-		}
-		for (const style of gridStyles) {
-			collectVariableIds(style.layoutGrids, out);
-			collectVariableIds((style as WithBoundVariables).boundVariables, out);
+		for (const style of [...paintStyles, ...textStyles, ...effectStyles, ...gridStyles]) {
+			collectStyleVariableIds(style, out);
 		}
 	}
 }
