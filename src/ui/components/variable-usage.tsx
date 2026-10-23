@@ -1,54 +1,41 @@
-import { cn } from '@/lib/utils';
 import type { VariableUsage as VariableUsageData } from '../../shared/rpc-types';
 import { usePlugin } from '@/context/plugin-context';
-import { ArrowUpRight } from 'lucide-react';
-import { useState } from 'react';
 import NodeIcon from './node-icon';
+import { ArrowUpRight } from 'lucide-react';
 
 type VariableUsageProps = {
 	variable: VariableUsageData;
 };
 
+// Laid out like a UI3 layers-panel row: node icon, name and bound field, path underneath.
 const VariableUsage = ({ variable }: VariableUsageProps) => {
 	const {
 		actions: { navigateToResult },
 	} = usePlugin();
 
-	const [isHovered, setIsHovered] = useState(false);
-
 	return (
 		<button
 			type="button"
-			className={cn(
-				'flex w-full pl-7 pr-5 py-1.5 h-10.5 cursor-pointer gap-x-1',
-				isHovered ? 'bg-[#F5F5F6] cursor-pointer' : 'bg-white',
-			)}
-			onMouseEnter={() => setIsHovered(true)}
-			onMouseLeave={() => setIsHovered(false)}
+			className="group flex w-full h-10 items-center pl-8 pr-2 gap-x-2 text-left outline-none hover:bg-hover focus-visible:outline-1 focus-visible:outline-border-selected focus-visible:-outline-offset-1"
 			onClick={async () => await navigateToResult(variable)}
 		>
-			<div className="flex w-4 h-4 justify-center items-center">
-				<NodeIcon type={variable.nodeType} className="text-[#656B75] size-2.5" />
+			<div className="flex size-4 shrink-0 justify-center items-center self-start mt-1">
+				<NodeIcon type={variable.nodeType} className="text-icon-secondary size-2.5" />
 			</div>
-			<div className="flex flex-col items-start ml-1 gap-y-0.5">
-				<div className="flex font-sans font-medium gap-x-2 items-center">
-					<p
-						className={cn(
-							'font-sans font-medium text-xs leading-4 text-left line-clamp-1',
-							isHovered ? 'underline' : '',
-						)}
-					>
-						{variable.nodeName}
-					</p>
-					<span className="bg-[#DBEAFE] rounded-xs font-sans font-medium text-[10px] px-1 leading-3 capitalize">
+			<div className="flex flex-col min-w-0">
+				<div className="flex gap-x-1.5 items-center min-w-0">
+					<p className="truncate">{variable.nodeName}</p>
+					<span className="shrink-0 rounded-sm bg-secondary px-1 text-body-small text-muted-foreground capitalize">
 						{variable.field}
 					</span>
 				</div>
-				<p className="text-[10px] leading-3 font-sans">{variable.nodePath}</p>
+				<p className="truncate text-muted-foreground">{variable.nodePath}</p>
 			</div>
-			<div className="flex ml-auto">
-				{isHovered && <ArrowUpRight className="text-[#17181A]" />}
-			</div>
+			<ArrowUpRight
+				className="ml-auto mr-1 size-4 shrink-0 text-icon-secondary invisible group-hover:visible group-focus-visible:visible"
+				strokeWidth={1.5}
+				aria-hidden="true"
+			/>
 		</button>
 	);
 };

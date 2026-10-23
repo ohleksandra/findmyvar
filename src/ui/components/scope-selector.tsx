@@ -1,43 +1,33 @@
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 import { usePlugin } from '@/context/plugin-context';
 import type { SearchScope } from '../../shared/rpc-types';
-import { DEFAULT_SCOPE } from '../../shared/constants';
 import { cn } from '@/lib/utils';
 
 type Props = React.HTMLAttributes<HTMLDivElement>;
 
+// Concentric corners: the chip keeps radius-md (5px) and the rail around it has 2px padding,
+// so the rail is 5 + 2 = 7px. The outline sits inside the chip so it doesn't widen the corner.
+const SEGMENT =
+	'h-5 rounded-md data-[state=active]:bg-background data-[state=active]:ring-1 data-[state=active]:ring-inset data-[state=active]:ring-border';
+
 const ScopeSelector = (props: Props) => {
 	const { state, actions } = usePlugin();
-	const { isSearching } = state;
+	const { isSearching, scope } = state;
 	const { setSearchScope } = actions;
 
 	return (
 		<div className={cn('flex items-center gap-x-2', props.className)}>
-			<p className="font-sans text-sm font-medium">Scope:</p>
-			<Tabs
-				defaultValue={DEFAULT_SCOPE}
-				onValueChange={(value) => setSearchScope(value as SearchScope)}
-			>
-				<TabsList className="bg-[#E5E6E8] text-sm font-medium font-sans">
-					<TabsTrigger
-						value="all-pages"
-						className="hover:cursor-pointer"
-						disabled={isSearching}
-					>
+			<p className="text-muted-foreground">Scope</p>
+			<Tabs value={scope} onValueChange={(value) => setSearchScope(value as SearchScope)}>
+				{/* Segmented control: tabs sit on a rail, the selected one is raised. */}
+				<TabsList className="gap-0 rounded-[7px] bg-secondary p-0.5">
+					<TabsTrigger value="all-pages" disabled={isSearching} className={SEGMENT}>
 						All Pages
 					</TabsTrigger>
-					<TabsTrigger
-						value="current-page"
-						className="hover:cursor-pointer"
-						disabled={isSearching}
-					>
+					<TabsTrigger value="current-page" disabled={isSearching} className={SEGMENT}>
 						Current Page
 					</TabsTrigger>
-					<TabsTrigger
-						value="selection"
-						className="hover:cursor-pointer"
-						disabled={isSearching}
-					>
+					<TabsTrigger value="selection" disabled={isSearching} className={SEGMENT}>
 						Selection
 					</TabsTrigger>
 				</TabsList>

@@ -48,14 +48,15 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 						justifyContent: 'center',
 						padding: '24px',
 						gap: '12px',
-						fontFamily: 'system-ui, sans-serif',
+						fontFamily: 'inherit',
 					}}
 				>
 					<p
 						style={{
-							fontSize: '14px',
-							fontWeight: 600,
-							color: '#17181A',
+							fontSize: '13px',
+							lineHeight: '22px',
+							fontWeight: 550,
+							color: 'var(--ui3-text, rgba(0, 0, 0, 0.9))',
 							margin: 0,
 						}}
 					>
@@ -63,8 +64,9 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 					</p>
 					<p
 						style={{
-							fontSize: '12px',
-							color: '#656B75',
+							fontSize: '11px',
+							lineHeight: '16px',
+							color: 'var(--ui3-text-secondary, rgba(0, 0, 0, 0.5))',
 							margin: 0,
 							textAlign: 'center',
 						}}
@@ -75,14 +77,15 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 						type="button"
 						onClick={() => window.location.reload()}
 						style={{
-							padding: '6px 16px',
-							fontSize: '12px',
-							fontWeight: 500,
-							color: '#fff',
-							backgroundColor: '#0D99FF',
+							height: '24px',
+							padding: '0 8px',
+							fontFamily: 'inherit',
+							fontSize: '11px',
+							fontWeight: 450,
+							color: 'var(--ui3-text-onbrand, #fff)',
+							backgroundColor: 'var(--ui3-bg-brand, #0d99ff)',
 							border: 'none',
-							borderRadius: '6px',
-							cursor: 'pointer',
+							borderRadius: '5px',
 						}}
 					>
 						Reload
