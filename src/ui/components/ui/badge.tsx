@@ -15,6 +15,8 @@ const badgeVariants = cva(
 				destructive: 'bg-destructive text-primary-foreground',
 				outline: 'border border-border-translucent text-foreground',
 				selected: 'bg-selected text-foreground',
+				// The ring keeps it visible on a highlighted (bg-selected) menu row.
+				new: 'bg-selected text-brand-text ring-1 ring-inset ring-brand-text/20',
 			},
 		},
 		defaultVariants: {

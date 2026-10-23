@@ -67,7 +67,8 @@ const UnusedRow = ({ node, locks, isChild = false }: Props) => {
 		: hiddenUsers.length > 0
 			? usedOnlyByLabel(variable.usedBy)
 			: null;
-	const detailsId = `unused-details-${variable.id}`;
+	// A shared variable shows up once per parent, so the id names the copy, not just the variable.
+	const detailsId = `unused-details-${node.parentId ?? 'top'}-${variable.id}`;
 
 	const handleCopy = async () => {
 		if (await copyToClipboard(variable.name)) {

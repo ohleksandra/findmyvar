@@ -11,26 +11,27 @@ import { copyToClipboard } from '@/lib/copy-to-clipboard';
 import { Button } from '../ui/button';
 import UnusedRow from './unused-row';
 import UnusedDeleteDialog from './unused-delete-dialog';
-import { buildGroups, buildLockMap, type UnusedGroup, type UnusedNode } from './unused-tree-model';
+import { buildGroups, buildLockMap, type UnusedGroup } from './unused-tree-model';
+import { filterGroup, type FilteredGroup } from './unused-filter';
 
 const COPIED_RESET_MS = 2000;
 
-function flattenNodes(nodes: UnusedNode[]): UnusedNode[] {
-	return nodes.flatMap((n) => [{ ...n, children: [] }, ...flattenNodes(n.children)]);
-}
+type GroupProps = {
+	group: UnusedGroup;
+	shown: FilteredGroup;
+	isFiltering: boolean;
+	locks: Map<string, string>;
+};
 
-type GroupProps = { group: UnusedGroup; filter: string; locks: Map<string, string> };
-
-const GroupSection = ({ group, filter, locks }: GroupProps) => {
+const GroupSection = ({ group, shown, isFiltering, locks }: GroupProps) => {
 	const selectMany = useUnusedStore((s) => s.selectMany);
 	const [isOpen, setIsOpen] = useState(!group.isPalette);
 
-	// While filtering, show matching variables as a flat list so nothing is hidden inside a tree.
-	const nodes = filter
-		? flattenNodes(group.roots).filter((n) => n.variable.name.toLowerCase().includes(filter))
-		: group.roots;
-	if (filter && nodes.length === 0) return null;
-	const showRows = isOpen || !!filter;
+	const { nodes, ids } = shown;
+	if (isFiltering && ids.length === 0) return null;
+	const showRows = isOpen || isFiltering;
+	// While filtering, "Select" takes only the variables in view.
+	const isPartial = ids.length < group.ids.length;
 
 	return (
 		<section aria-label={group.name} className="border-t">
@@ -63,9 +64,9 @@ const GroupSection = ({ group, filter, locks }: GroupProps) => {
 					<Button
 						variant="ghost"
 						className="ml-auto shrink-0 text-foreground"
-						onClick={() => selectMany(group.ids)}
+						onClick={() => selectMany(ids)}
 					>
-						Select all {group.ids.length}
+						{isPartial ? `Select ${ids.length}` : `Select all ${ids.length}`}
 					</Button>
 				)}
 			</div>
@@ -140,6 +141,8 @@ const UnusedResults = () => {
 	const filter = rawFilter.trim().toLowerCase();
 	const deletableCount = result.unused.filter((v) => !v.isPalette).length;
 	const keptCount = result.unused.length - deletableCount + result.publishedNames.length;
+	const shownGroups = groups.map((group) => ({ group, shown: filterGroup(group, filter) }));
+	const shownCount = new Set(shownGroups.flatMap(({ shown }) => shown.ids)).size;
 
 	return (
 		<div className="flex flex-col relative">
@@ -164,6 +167,7 @@ const UnusedResults = () => {
 					<span className="font-strong text-foreground">{deletableCount}</span> can be
 					deleted
 					{keptCount > 0 && <span> · {keptCount} kept</span>}
+					{filter && <span> · {shownCount} shown</span>}
 				</p>
 				<Button variant="secondary" className="ml-auto" onClick={() => void startScan()}>
 					Rescan
@@ -180,11 +184,21 @@ const UnusedResults = () => {
 				</div>
 			)}
 
-			{groups.map((group) => (
+			{filter && shownCount === 0 && groups.length > 0 && (
+				<div className="flex flex-col items-center gap-y-1 border-t px-4 py-6 text-center">
+					<p className="font-strong">No unused variables match “{rawFilter.trim()}”</p>
+					<p className="text-muted-foreground">
+						Try part of a variable or collection name.
+					</p>
+				</div>
+			)}
+
+			{shownGroups.map(({ group, shown }) => (
 				<GroupSection
 					key={`${group.isPalette}-${group.name}`}
 					group={group}
-					filter={filter}
+					shown={shown}
+					isFiltering={!!filter}
 					locks={locks}
 				/>
 			))}

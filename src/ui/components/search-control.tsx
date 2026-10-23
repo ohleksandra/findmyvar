@@ -10,6 +10,7 @@ import {
 	CommandItem,
 	CommandList,
 } from './ui/command';
+import { Badge } from './ui/badge';
 import { Kbd } from './ui/kbd';
 import VariableTypeIcon from './variable-type-icon';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,8 @@ interface CommandAction {
 	label: string;
 	keywords: string;
 	hint?: string;
+	/** Shows a "New" tag so people notice a recently added action. */
+	isNew?: boolean;
 	icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }
 
@@ -34,6 +37,7 @@ const ACTIONS: CommandAction[] = [
 		label: 'Find unused variables',
 		keywords: 'unused clean audit find',
 		hint: 'Whole file',
+		isNew: true,
 		icon: DetachSmallIcon,
 	},
 ];
@@ -248,6 +252,7 @@ const SearchControl = () => {
 									>
 										<action.icon className="size-6" />
 										<span>{action.label}</span>
+										{action.isNew && <Badge variant="new">New</Badge>}
 										{action.hint && (
 											<span className="ml-auto text-muted-foreground">
 												{action.hint}

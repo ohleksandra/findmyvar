@@ -4,6 +4,8 @@ import { buildChildrenMap, descendantsOf } from '../../../shared/unused-tree';
 export interface UnusedNode {
 	variable: UnusedVariable;
 	children: UnusedNode[];
+	/** The variable this copy is nested under, or null at the top level and in flat lists. */
+	parentId: string | null;
 }
 
 export interface UnusedGroup {
@@ -13,17 +15,47 @@ export interface UnusedGroup {
 	ids: string[];
 }
 
+interface TreeLinks {
+	byId: Map<string, UnusedVariable>;
+	/** For each variable, the nested variables that point to it. */
+	children: Map<string, string[]>;
+}
+
+/**
+ * A variable that points to several unused variables (say one per mode) sits under each of them.
+ * Like the scanner's `parentId`, a palette value never holds a non-palette one, and variables
+ * without a `parentId` (including where the scanner broke a cycle) stay at the top level.
+ */
+function buildLinks(unused: UnusedVariable[]): TreeLinks {
+	const byId = new Map(unused.map((v) => [v.id, v]));
+	const children = new Map<string, string[]>();
+	for (const parent of unused) {
+		for (const { id } of parent.usedBy) {
+			const child = byId.get(id);
+			if (!child?.parentId || !byId.has(child.parentId)) continue;
+			if (parent.isPalette && !child.isPalette) continue;
+			children.set(parent.id, [...(children.get(parent.id) ?? []), child.id]);
+		}
+	}
+	return { byId, children };
+}
+
 function toNode(
 	variable: UnusedVariable,
-	byId: Map<string, UnusedVariable>,
-	children: Map<string, string[]>,
+	links: TreeLinks,
+	parentId: string | null,
+	ancestors: Set<string>,
 ): UnusedNode {
+	const path = new Set(ancestors).add(variable.id);
 	return {
 		variable,
-		children: (children.get(variable.id) ?? [])
-			.map((id) => byId.get(id))
+		children: (links.children.get(variable.id) ?? [])
+			// Skips anything already on the way down, so a loop between modes can't recurse forever.
+			.filter((id) => !path.has(id))
+			.map((id) => links.byId.get(id))
 			.filter((v): v is UnusedVariable => v !== undefined)
-			.map((child) => toNode(child, byId, children)),
+			.map((child) => toNode(child, links, variable.id, path)),
+		parentId,
 	};
 }
 
@@ -33,12 +65,8 @@ function flatten(node: UnusedNode): string[] {
 
 /** Groups unused variables by the collection of their top-level variable, palettes last. */
 export function buildGroups(unused: UnusedVariable[]): UnusedGroup[] {
-	const byId = new Map(unused.map((v) => [v.id, v]));
-	const children = new Map<string, string[]>();
-	for (const variable of unused) {
-		if (!variable.parentId) continue;
-		children.set(variable.parentId, [...(children.get(variable.parentId) ?? []), variable.id]);
-	}
+	const links = buildLinks(unused);
+	const { byId } = links;
 	const groups = new Map<string, UnusedGroup>();
 
 	for (const variable of unused) {
@@ -50,9 +78,10 @@ export function buildGroups(unused: UnusedVariable[]): UnusedGroup[] {
 			roots: [],
 			ids: [],
 		};
-		const node = toNode(variable, byId, children);
+		const node = toNode(variable, links, null, new Set());
 		group.roots.push(node);
-		group.ids.push(...flatten(node));
+		// A shared variable can show up more than once in a group, but it's still one variable.
+		group.ids = Array.from(new Set([...group.ids, ...flatten(node)]));
 		groups.set(key, group);
 	}
 
