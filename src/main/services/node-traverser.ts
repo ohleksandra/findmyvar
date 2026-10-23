@@ -11,6 +11,7 @@ function yieldToMain(): Promise<void> {
 async function* findNodesWithBindingsAsync(
 	node: SceneNode,
 	signal: { cancelled: boolean },
+	include: (node: SceneNode) => boolean = hasBoundVariables,
 ): AsyncGenerator<SceneNode, void, void> {
 	let nodesVisited = 0;
 
@@ -19,7 +20,7 @@ async function* findNodesWithBindingsAsync(
 	): AsyncGenerator<SceneNode, void, void> {
 		if (signal.cancelled) return;
 
-		if (hasBoundVariables(currentNode)) {
+		if (include(currentNode)) {
 			yield currentNode;
 		}
 
@@ -40,4 +41,4 @@ async function* findNodesWithBindingsAsync(
 	yield* traverse(node);
 }
 
-export { findNodesWithBindingsAsync, yieldToMain };
+export { findNodesWithBindingsAsync, hasBoundVariables, yieldToMain };

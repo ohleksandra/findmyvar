@@ -3,13 +3,19 @@ import type { PluginProcedures, PluginNotifications } from '../../shared/rpc-typ
 import { getVariablesHandlers } from './get-variables';
 import { variableSearchHandlers } from './variable-search-handler';
 import { navigationHandlers } from './navigation-handler';
+import { unusedScanHandlers } from './unused-scan-handler';
 import type { HandlerDeps } from './types';
 
 export function registerAllHandlers(
 	rpcServer: RpcServer<PluginProcedures, PluginNotifications>,
 	deps: HandlerDeps,
 ): void {
-	const modules = [getVariablesHandlers(), variableSearchHandlers(deps), navigationHandlers()];
+	const modules = [
+		getVariablesHandlers(),
+		variableSearchHandlers(deps),
+		navigationHandlers(),
+		unusedScanHandlers(deps),
+	];
 
 	for (const mod of modules) {
 		for (const key of Object.keys(mod) as (keyof PluginProcedures & string)[]) {

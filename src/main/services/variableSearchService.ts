@@ -7,6 +7,7 @@ import { SearchCache } from './search-cache';
 import { findNodesWithBindingsAsync, yieldToMain } from './node-traverser';
 import { buildNodePath } from './node-path-builder';
 import { resolveSearchTargets } from './search-target-resolver';
+import { acquireTraversalMode } from './traversal-mode';
 
 const RESULTS_BATCH_SIZE = 50;
 const NODES_PER_PROGRESS = 500;
@@ -88,11 +89,9 @@ class VariableSearchService {
 		}
 
 		const signal = { cancelled: false };
-		const previousSkipInvisible = figma.skipInvisibleInstanceChildren;
+		const releaseTraversalMode = acquireTraversalMode('fast');
 
 		try {
-			figma.skipInvisibleInstanceChildren = true;
-
 			const allResults: VariableUsage[] = [];
 			const targets = await resolveSearchTargets(scope);
 
@@ -216,7 +215,7 @@ class VariableSearchService {
 			const message = error instanceof Error ? error.message : 'Unknown error';
 			this.notifier.notify('variableSearch.error', { searchId, error: message });
 		} finally {
-			figma.skipInvisibleInstanceChildren = previousSkipInvisible;
+			releaseTraversalMode();
 			if (this.activeSearchId === searchId) {
 				this.activeSearchId = null;
 			}

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { VariableUsage } from '../src/shared/rpc-types';
 import { VariableSearchService } from '../src/main/services/variableSearchService';
+import { resetTraversalMode } from '../src/main/services/traversal-mode';
 
 const mockNotify = vi.fn();
 
@@ -64,6 +65,7 @@ describe('VariableSearchService', () => {
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
+		resetTraversalMode();
 		vi.useFakeTimers();
 
 		const mockRpcServer = {

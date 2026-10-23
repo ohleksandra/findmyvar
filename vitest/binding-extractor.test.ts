@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { extractBindings } from '../src/main/services/binding-extractor';
+import {
+	collectPrototypeVariableIds,
+	collectVariableIds,
+	extractBindings,
+} from '../src/main/services/binding-extractor';
 
 function createMockNode(
 	options: {
@@ -128,5 +132,132 @@ describe('extractBindings', () => {
 			});
 			expect(extractBindings(node, 'var-1')).toBeNull();
 		});
+	});
+});
+
+describe('collectVariableIds', () => {
+	test('collects ids from direct, array, nested-array and object bindings', () => {
+		const ids = new Set<string>();
+		collectVariableIds(
+			{
+				width: ALIAS('v-width'),
+				fills: [ALIAS('v-fill-0'), ALIAS('v-fill-1')],
+				gradient: [[ALIAS('v-stop')]],
+				componentProperties: { label: ALIAS('v-label') },
+			},
+			ids,
+		);
+		expect([...ids].sort()).toEqual(['v-fill-0', 'v-fill-1', 'v-label', 'v-stop', 'v-width']);
+	});
+
+	test('collects ids nested inside style paints', () => {
+		const ids = new Set<string>();
+		collectVariableIds(
+			[
+				{
+					type: 'SOLID',
+					color: { r: 0, g: 0, b: 0 },
+					boundVariables: { color: ALIAS('v-paint') },
+				},
+			],
+			ids,
+		);
+		expect([...ids]).toEqual(['v-paint']);
+	});
+
+	test('ignores null, primitives and non-alias objects', () => {
+		const ids = new Set<string>();
+		collectVariableIds(null, ids);
+		collectVariableIds('VARIABLE_ALIAS', ids);
+		collectVariableIds({ type: 'VARIABLE_ALIAS' }, ids);
+		collectVariableIds({ fills: [] }, ids);
+		expect(ids.size).toBe(0);
+	});
+});
+
+describe('collectPrototypeVariableIds', () => {
+	test('collects "Set variable" targets and aliases used in values', () => {
+		const ids = new Set<string>();
+		collectPrototypeVariableIds(
+			[
+				{
+					trigger: { type: 'ON_CLICK' },
+					actions: [
+						{
+							type: 'SET_VARIABLE',
+							variableId: 'v-is-open',
+							variableValue: { type: 'VARIABLE_ALIAS', value: ALIAS('v-default') },
+						},
+					],
+				},
+			],
+			ids,
+		);
+		expect([...ids].sort()).toEqual(['v-default', 'v-is-open']);
+	});
+
+	test('finds aliases deep inside conditional expressions', () => {
+		const ids = new Set<string>();
+		collectPrototypeVariableIds(
+			[
+				{
+					actions: [
+						{
+							type: 'CONDITIONAL',
+							conditionalBlocks: [
+								{
+									condition: {
+										type: 'EXPRESSION',
+										value: {
+											expressionFunction: 'AND',
+											expressionArguments: [
+												{
+													type: 'EXPRESSION',
+													value: {
+														expressionFunction: 'EQUALS',
+														expressionArguments: [
+															{
+																type: 'VARIABLE_ALIAS',
+																value: ALIAS('v-logged-in'),
+															},
+															{ type: 'BOOLEAN', value: true },
+														],
+													},
+												},
+											],
+										},
+									},
+									actions: [
+										{
+											type: 'SET_VARIABLE',
+											variableId: 'v-cart',
+											variableValue: { value: 0 },
+										},
+									],
+								},
+							],
+						},
+					],
+				},
+			],
+			ids,
+		);
+		expect([...ids].sort()).toEqual(['v-cart', 'v-logged-in']);
+	});
+
+	test('ignores actions without variables', () => {
+		const ids = new Set<string>();
+		collectPrototypeVariableIds(
+			[
+				{
+					actions: [
+						{ type: 'NODE', destinationId: '1:2' },
+						{ type: 'SET_VARIABLE', variableId: null },
+					],
+				},
+			],
+			ids,
+		);
+		expect(ids.size).toBe(0);
 	});
 });

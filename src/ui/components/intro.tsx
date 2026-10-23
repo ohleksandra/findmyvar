@@ -1,23 +1,31 @@
 import LogoInverted from './icons/logo-inverted';
-import { ArrowUpRight, Search } from 'lucide-react';
+import { DetachSmallIcon, NavigateForwardIcon, SearchSmallIcon } from './icons/ui3';
+import { Button } from './ui/button';
+import { useUnusedStore } from '@/store/unused-store';
 
 const Intro = () => {
+	const startUnusedScan = useUnusedStore((s) => s.startScan);
+
 	return (
-		<div className="w-full h-full flex gap-y-8 flex-col justify-center items-center">
-			<p className="font-sans text-sm text-[#3A3C3F] text-center">
-				Find where variables <br />
-				are used across your file
+		<div className="w-full h-full flex gap-y-6 flex-col justify-center items-center py-10">
+			<LogoInverted className="w-20 h-20" />
+			<p className="text-heading-small font-strong text-center">
+				Find where variables are used
 			</p>
-			<LogoInverted className="w-32 h-32" />
-			<div className="flex flex-col gap-y-1.5 font-sans text-sm text-[#3A3C3F] items-center">
-				<p className="flex items-center gap-x-1">
-					<Search className="w-4 h-4" />
-					<span>Type variable name to search</span>
+			<div className="flex flex-col text-muted-foreground items-start">
+				<p className="flex items-center">
+					<SearchSmallIcon className="size-6 text-icon-secondary" />
+					<span>Type a variable name to search</span>
 				</p>
-				<p className="flex items-center gap-x-1">
-					<ArrowUpRight className="w-4 h-4" /> <span>Click results to navigate</span>
+				<p className="flex items-center">
+					<NavigateForwardIcon className="size-6 text-icon-secondary" />
+					<span>Click a result to jump to the layer</span>
 				</p>
 			</div>
+			<Button variant="secondary" onClick={() => void startUnusedScan()}>
+				<DetachSmallIcon aria-hidden="true" />
+				Find unused variables
+			</Button>
 		</div>
 	);
 };

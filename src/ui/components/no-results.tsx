@@ -1,30 +1,50 @@
 import { usePlugin } from '@/context/plugin-context';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { DetachSmallIcon } from './icons/ui3';
+import { SCOPE_ALL_PAGES } from '../../shared/constants';
+import { useUnusedStore } from '@/store/unused-store';
 
 const NoResults = () => {
 	const { state } = usePlugin();
-	const { searchQuery } = state;
+	const startUnusedScan = useUnusedStore((s) => s.startScan);
+	const { searchQuery, searchVariable, scope } = state;
 
-	const displayQuery = searchQuery || '';
+	const displayQuery = searchVariable?.name || searchQuery || '';
+	const searchedWholeFile = scope === SCOPE_ALL_PAGES;
 
 	return (
 		<div className="flex flex-col w-full h-full justify-center items-center">
-			<div className="flex flex-col justify-center gap-y-4 max-w-79.5 items-center">
-				<div className="flex gap-x-1">
-					<p className="font-medium text-nowrap">No results found for</p>
-					<Badge
-						variant="secondary"
-						className="rounded-sm flex items-center justify-start font-medium max-w-35"
-					>
-						<span className="font-mono overflow-ellipsis whitespace-nowrap overflow-x-hidden font-medium">
-							{displayQuery}
-						</span>
+			<div className="flex flex-col justify-center gap-y-2 max-w-64 items-center py-10">
+				<div className="flex gap-x-1 items-center">
+					<p className="text-heading-small font-strong text-nowrap">
+						{searchedWholeFile ? 'No layers use' : 'No results for'}
+					</p>
+					<Badge variant="secondary" className="justify-start max-w-35 h-5">
+						<span className="truncate">{displayQuery}</span>
 					</Badge>
 				</div>
-				<p className="text-center leading-5 text-sm">
-					This variable doesn't appear to be used anywhere in your document. Try checking
-					the variable name or expanding your search scope
-				</p>
+				{searchedWholeFile ? (
+					<>
+						<p className="text-center text-muted-foreground">
+							It may still be used by other variables. Find out what nothing uses at
+							all.
+						</p>
+						<Button
+							variant="secondary"
+							className="mt-1"
+							onClick={() => void startUnusedScan()}
+						>
+							<DetachSmallIcon aria-hidden="true" />
+							Find unused variables
+						</Button>
+					</>
+				) : (
+					<p className="text-center text-muted-foreground">
+						This variable isn't used in the current scope. Try searching all pages to
+						check the whole file.
+					</p>
+				)}
 			</div>
 		</div>
 	);
