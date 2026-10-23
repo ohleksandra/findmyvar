@@ -27,8 +27,7 @@ const NoResults = () => {
 				{searchedWholeFile ? (
 					<>
 						<p className="text-center text-muted-foreground">
-							It may still be used by other variables. Find out what nothing uses at
-							all.
+							Other variables may still reference it. Check what's truly unused.
 						</p>
 						<Button
 							variant="secondary"
