@@ -53,11 +53,14 @@ const ScanPrompt = ({ title, description }: { title: string; description: string
 	);
 };
 
+const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
+
 const Deleted = () => {
 	const deleteResult = useUnusedStore((s) => s.deleteResult);
 	const startScan = useUnusedStore((s) => s.startScan);
 	const headingRef = useRef<HTMLParagraphElement>(null);
 	const count = deleteResult?.deletedIds.length ?? 0;
+	const skipped = deleteResult?.skippedIds.length ?? 0;
 
 	useEffect(() => {
 		headingRef.current?.focus();
@@ -66,22 +69,34 @@ const Deleted = () => {
 	return (
 		<div className="flex flex-col w-full h-full justify-center items-center px-4 py-16">
 			<div className="flex flex-col justify-center gap-y-1 max-w-64 items-center text-center">
-				<ApprovedCheckmarkIcon className="size-6 text-success" aria-hidden="true" />
+				{count > 0 && (
+					<ApprovedCheckmarkIcon className="size-6 text-success" aria-hidden="true" />
+				)}
 				<p
 					ref={headingRef}
 					tabIndex={-1}
 					className="text-heading-small font-strong outline-none"
 				>
-					{count} variable{count === 1 ? '' : 's'} deleted
+					{count > 0 ? `${plural(count, 'variable')} deleted` : 'Nothing deleted'}
 				</p>
+				{skipped > 0 && (
+					<p className="text-muted-foreground">
+						{count > 0
+							? `${plural(skipped, 'variable')} kept: in use now.`
+							: 'The variables you picked are in use now.'}
+					</p>
+				)}
 				{deleteResult?.versionSaved && (
 					<p className="text-muted-foreground">Version saved: Before FindMyVar cleanup</p>
 				)}
-				<p className="text-muted-foreground">
-					Undo with {UNDO_SHORTCUT} or from Version history
-				</p>
+				{count > 0 && (
+					<p className="text-muted-foreground">
+						Undo with {UNDO_SHORTCUT} or from Version history
+					</p>
+				)}
+				{/* The list is out of date after a delete, so this runs a fresh scan. */}
 				<Button variant="secondary" className="mt-2" onClick={() => void startScan()}>
-					Back to results
+					Scan again
 				</Button>
 			</div>
 		</div>

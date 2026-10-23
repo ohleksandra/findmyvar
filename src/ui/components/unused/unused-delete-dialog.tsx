@@ -137,8 +137,8 @@ const UnusedDeleteDialog = () => {
 						className={cn(isDeleting && 'disabled:bg-destructive')}
 						disabled={isDeleting || isStale}
 						onClick={async () => {
-							await confirmDelete(alsoDelete);
-							setAlsoDelete([]);
+							// After a failure the dialog stays open, with the same choices.
+							if (await confirmDelete(alsoDelete)) setAlsoDelete([]);
 						}}
 					>
 						{isDeleting && <Spinner className="text-primary-foreground" />}

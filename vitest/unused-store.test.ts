@@ -125,12 +125,15 @@ describe('useUnusedStore', () => {
 			deleteTargetIds: ['button-bg', 'card-bg'],
 		});
 
-		await useUnusedStore.getState().confirmDelete(['brand-bg']);
+		const deleted = await useUnusedStore.getState().confirmDelete(['brand-bg']);
 
-		expect(mockCallPlugin).toHaveBeenCalledWith('unusedScan.delete', {
-			scanId: 'scan-1',
-			ids: ['button-bg', 'card-bg', 'brand-bg'],
-		});
+		expect(deleted).toBe(true);
+		expect(mockCallPlugin).toHaveBeenCalledWith(
+			'unusedScan.delete',
+			{ scanId: 'scan-1', ids: ['button-bg', 'card-bg', 'brand-bg'] },
+			// Longer than the 30 second default: saving a version can take a while.
+			{ timeout: 5 * 60 * 1000 },
+		);
 		expect(useUnusedStore.getState().deleteStatus).toBe('done');
 		// Only what was deleted leaves the selection.
 		expect(useUnusedStore.getState().selectedIds).toEqual(['old/divider']);
@@ -180,6 +183,7 @@ describe('useUnusedStore', () => {
 		const state = useUnusedStore.getState();
 		expect(state.deleteStatus).toBe('confirming');
 		expect(state.deleteError).toContain('Deleted 1 of 3');
+		expect(state.deleteError).toContain('Scan again');
 		expect(state.isStale).toBe(true);
 		expect(state.selectedIds).toEqual(['brand-bg', 'card-bg']);
 		expect(state.deleteTargetIds).toEqual(['brand-bg', 'card-bg']);
@@ -187,17 +191,39 @@ describe('useUnusedStore', () => {
 		expect(mockCallPlugin).toHaveBeenCalledWith('get-variables');
 	});
 
-	test('a request that fails to reach the plugin shows the error without marking results stale', async () => {
+	test('no answer from the plugin blocks a retry, since it may still be deleting', async () => {
 		const useUnusedStore = await storeWithResult();
 		mockCallPlugin.mockRejectedValue(new Error('RPC call timed out'));
 		useUnusedStore.getState().requestDeleteOne('old/divider');
 
-		await useUnusedStore.getState().confirmDelete();
+		const deleted = await useUnusedStore.getState().confirmDelete();
 
 		const state = useUnusedStore.getState();
+		expect(deleted).toBe(false);
 		expect(state.deleteStatus).toBe('confirming');
-		expect(state.deleteError).toBe('RPC call timed out');
-		expect(state.isStale).toBe(false);
+		expect(state.deleteError).toContain('may already be gone');
+		expect(state.isStale).toBe(true);
+	});
+
+	test('a second confirm while deleting is ignored', async () => {
+		const useUnusedStore = await storeWithResult();
+		let finish: (value: unknown) => void = () => {};
+		mockCallPlugin.mockImplementation((procedure: string) =>
+			procedure === 'unusedScan.delete'
+				? new Promise((resolve) => (finish = resolve))
+				: Promise.resolve({ variables: [] }),
+		);
+		useUnusedStore.getState().requestDeleteOne('old/divider');
+
+		const first = useUnusedStore.getState().confirmDelete();
+		const second = await useUnusedStore.getState().confirmDelete();
+		finish({ deletedIds: ['old/divider'], skippedIds: [], versionSaved: true });
+
+		expect(second).toBe(false);
+		expect(await first).toBe(true);
+		expect(mockCallPlugin.mock.calls.filter((c) => c[0] === 'unusedScan.delete')).toHaveLength(
+			1,
+		);
 	});
 
 	test('a finished scan remembers its id for deleting', async () => {

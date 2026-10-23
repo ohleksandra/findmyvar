@@ -9,6 +9,9 @@ import type {
 import { buildChildrenMap, descendantsOf } from '../../shared/unused-tree';
 import { usePluginStore } from './plugin-store';
 
+// Saving a version and re-checking every variable can take well over the default 30 seconds.
+const DELETE_TIMEOUT_MS = 5 * 60 * 1000;
+
 export type UnusedScanStatus = 'idle' | 'scanning' | 'done' | 'error';
 export type UnusedDeleteStatus = 'idle' | 'confirming' | 'deleting' | 'done';
 
@@ -47,7 +50,8 @@ interface UnusedStore {
 	requestDelete(): void;
 	requestDeleteOne(id: string): void;
 	cancelDelete(): void;
-	confirmDelete(extraIds?: string[]): Promise<void>;
+	/** Resolves to whether the variables were deleted. */
+	confirmDelete(extraIds?: string[]): Promise<boolean>;
 
 	_setProgress(scanId: string, progress: UnusedScanProgress): void;
 	_complete(scanId: string, result: UnusedScanResult): void;
@@ -167,20 +171,27 @@ export const useUnusedStore = create<UnusedStore>()((set, get) => ({
 	cancelDelete: () => set({ deleteStatus: 'idle', deleteTargetIds: [], deleteError: null }),
 
 	confirmDelete: async (extraIds = []) => {
-		const { resultScanId, deleteTargetIds } = get();
-		if (!resultScanId) return;
+		const { resultScanId, deleteTargetIds, deleteStatus } = get();
+		if (!resultScanId || deleteStatus === 'deleting') return false;
 		const ids = Array.from(new Set([...deleteTargetIds, ...extraIds]));
 		set({ deleteStatus: 'deleting', deleteError: null });
 
 		let deleteResult: UnusedDeleteResult;
 		try {
-			deleteResult = await callPlugin('unusedScan.delete', { scanId: resultScanId, ids });
-		} catch (err) {
+			deleteResult = await callPlugin(
+				'unusedScan.delete',
+				{ scanId: resultScanId, ids },
+				{ timeout: DELETE_TIMEOUT_MS },
+			);
+		} catch {
+			// No answer, so the plugin may still be deleting. Retrying could act on a half-deleted file.
 			set({
 				deleteStatus: 'confirming',
-				deleteError: err instanceof Error ? err.message : 'Delete failed',
+				deleteError:
+					"Couldn't confirm the delete, so some variables may already be gone. Scan again to see what's left.",
+				isStale: true,
 			});
-			return;
+			return false;
 		}
 
 		const deleted = new Set(deleteResult.deletedIds);
@@ -191,13 +202,16 @@ export const useUnusedStore = create<UnusedStore>()((set, get) => ({
 		if (error) {
 			set({
 				deleteStatus: 'confirming',
-				deleteError: error.message,
+				deleteError:
+					error.code === 'PARTIAL'
+						? `${error.message}. Scan again to see what's left; Undo brings back the deleted ones.`
+						: error.message,
 				// After a partial delete the list no longer matches the file either.
 				isStale: get().isStale || error.code === 'STALE' || error.code === 'PARTIAL',
 				deleteTargetIds: get().deleteTargetIds.filter((id) => !deleted.has(id)),
 				selectedIds,
 			});
-			return;
+			return false;
 		}
 
 		set({
@@ -207,6 +221,7 @@ export const useUnusedStore = create<UnusedStore>()((set, get) => ({
 			selectedIds,
 			expandedId: null,
 		});
+		return true;
 	},
 
 	_setProgress: (scanId, progress) => {
