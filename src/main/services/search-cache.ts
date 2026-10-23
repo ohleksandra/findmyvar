@@ -5,6 +5,18 @@ const CACHE_TTL = 5 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 20;
 const DOCUMENT_CHANGE_DEBOUNCE_MS = 500;
 
+// Changes that can't affect results: they hold no variable and don't change a layer's name, path or
+// page. Binding a variable shows up as the bound property instead (e.g. `fills`, `width`).
+const RESULT_NEUTRAL_PROPERTIES = new Set<string>([
+	'x',
+	'y',
+	'relativeTransform',
+	'rotation',
+	'locked',
+	'expanded',
+	'pluginData',
+]);
+
 interface CacheEntry {
 	variableId: string;
 	timestamp: number;
@@ -107,7 +119,7 @@ class SearchCache {
 				change.type === 'CREATE' ||
 				change.type === 'DELETE' ||
 				(change.type === 'PROPERTY_CHANGE' &&
-					(change.properties as string[]).includes('boundVariables'))
+					change.properties.some((property) => !RESULT_NEUTRAL_PROPERTIES.has(property)))
 			);
 		});
 
