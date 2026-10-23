@@ -45,6 +45,7 @@ interface PluginStore {
 	startSearch(variable: Variable, scope?: SearchScope): Promise<void>;
 	cancelSearch(): Promise<void>;
 	clearSearchResults(): void;
+	resetSearch(): Promise<void>;
 	clearCache(variableId?: string): Promise<void>;
 	navigateToResult(usage: VariableUsage): Promise<void>;
 	setSearchQuery(query: string): void;
@@ -141,6 +142,27 @@ export const usePluginStore = create<PluginStore>()(
 					searchResults: [],
 					error: null,
 					progress: null,
+				});
+			},
+
+			resetSearch: async () => {
+				if (get().isSearching) {
+					try {
+						await get().cancelSearch();
+					} catch {
+						// Clear anyway: cancelSearch already stopped listening for that search's results.
+					}
+				}
+				// Back to the start screen: no query, no variable, no "no results" state.
+				set({
+					searchQuery: '',
+					searchVariable: null,
+					searchResults: [],
+					isSearchCompleted: false,
+					isSearchCancelled: false,
+					error: null,
+					progress: null,
+					cached: false,
 				});
 			},
 

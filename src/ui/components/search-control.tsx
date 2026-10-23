@@ -49,7 +49,7 @@ function matchActions(query: string): CommandAction[] {
 const SearchControl = () => {
 	const { state, actions } = usePlugin();
 	const { variables, searchQuery, scope, recentSearches } = state;
-	const { setSearchQuery, startSearch } = actions;
+	const { setSearchQuery, startSearch, resetSearch } = actions;
 	const isUnusedMode = useUnusedStore((s) => s.isActive);
 	const unusedFilter = useUnusedStore((s) => s.filter);
 	const setUnusedFilter = useUnusedStore((s) => s.setFilter);
@@ -68,9 +68,9 @@ const SearchControl = () => {
 	}, [variables, searchQuery, isActionQuery]);
 
 	const matchingActions = useMemo(() => {
-		if (!trimmedQuery) return ACTIONS;
+		// Actions stay listed under the variables while typing a name; only "/" narrows them down.
 		if (isActionQuery) return matchActions(trimmedQuery.slice(ACTION_PREFIX.length));
-		return matchActions(trimmedQuery);
+		return ACTIONS;
 	}, [trimmedQuery, isActionQuery]);
 
 	const close = useCallback(() => setIsSuggestionsOpen(false), []);
@@ -94,8 +94,11 @@ const SearchControl = () => {
 
 	const showRecent = !trimmedQuery && recentSearches.length > 0;
 	const showVariables = !!trimmedQuery && suggestions.length > 0;
+	// Actions are always listed, so without this a name that matches nothing would look like a match.
+	const showNoVariables = !!trimmedQuery && !isActionQuery && suggestions.length === 0;
 	const showActions = matchingActions.length > 0;
 	const hasItems = showRecent || showVariables || showActions;
+	const inputValue = isUnusedMode ? unusedFilter : searchQuery;
 
 	return (
 		<div className="relative">
@@ -106,7 +109,7 @@ const SearchControl = () => {
 							? 'Filter unused variables'
 							: `Search variables or type ${ACTION_PREFIX} for actions`
 					}
-					value={isUnusedMode ? unusedFilter : searchQuery}
+					value={inputValue}
 					// Open: the field becomes the top of one white panel with the list below,
 					// like Figma's quick actions. Each half drops the shadow edge where they meet.
 					wrapperClassName={cn(
@@ -134,7 +137,30 @@ const SearchControl = () => {
 							</span>
 						)
 					}
-					shortcut={isUnusedMode ? null : <Kbd aria-hidden="true">{ACTION_PREFIX}</Kbd>}
+					shortcut={
+						inputValue ? (
+							<button
+								type="button"
+								className="flex rounded-sm text-icon-secondary outline-none hover:bg-hover-translucent hover:text-icon focus-visible:outline-1 focus-visible:outline-border-selected"
+								aria-label={isUnusedMode ? 'Clear filter' : 'Clear search'}
+								// Keep focus in the input.
+								onMouseDown={(e) => e.preventDefault()}
+								onClick={() => {
+									close();
+									if (isUnusedMode) {
+										setUnusedFilter('');
+									} else {
+										void resetSearch();
+									}
+								}}
+							>
+								<CloseSmallIcon className="size-5" aria-hidden="true" />
+							</button>
+						) : isUnusedMode ? null : (
+							// An empty field has nothing to search, so point to the actions instead.
+							<Kbd aria-hidden="true">{ACTION_PREFIX}</Kbd>
+						)
+					}
 					onValueChange={(value) => {
 						if (isUnusedMode) {
 							setUnusedFilter(value);
@@ -200,11 +226,17 @@ const SearchControl = () => {
 								))}
 							</CommandGroup>
 						)}
+						{showNoVariables && (
+							<p className="text-muted-foreground px-4 py-1 text-body-medium">
+								No variables match “{trimmedQuery}”
+							</p>
+						)}
 						{showActions && (
 							<CommandGroup
 								heading="Actions"
 								className={cn(
-									(showRecent || showVariables) && 'border-t mt-2 pt-2',
+									(showRecent || showVariables || showNoVariables) &&
+										'border-t mt-2 pt-2',
 								)}
 							>
 								{matchingActions.map((action) => (

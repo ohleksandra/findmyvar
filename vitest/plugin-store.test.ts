@@ -277,4 +277,53 @@ describe('PluginStore', () => {
 			);
 		});
 	});
+
+	describe('resetSearch', () => {
+		test('goes back to the start screen instead of a "no results" state', async () => {
+			const usePluginStore = await resetStore();
+			usePluginStore.setState({
+				searchQuery: 'brand-bg',
+				searchVariable: {
+					id: 'v1',
+					name: 'brand-bg',
+					resolvedType: 'COLOR',
+					hiddenFromPublishing: false,
+				},
+				isSearchCompleted: true,
+				searchResults: [],
+				error: 'Something failed',
+			});
+
+			await usePluginStore.getState().resetSearch();
+
+			const state = usePluginStore.getState();
+			expect(state.searchQuery).toBe('');
+			expect(state.searchVariable).toBeNull();
+			expect(state.isSearchCompleted).toBe(false);
+			expect(state.error).toBeNull();
+		});
+
+		test('stops a running search first', async () => {
+			const usePluginStore = await resetStore();
+			mockCallPlugin.mockResolvedValue({ cancelled: true });
+			usePluginStore.setState({ isSearching: true, activeSearchId: 's1', searchQuery: 'x' });
+
+			await usePluginStore.getState().resetSearch();
+
+			expect(mockCallPlugin).toHaveBeenCalledWith('variableSearch.cancel');
+			expect(usePluginStore.getState().isSearching).toBe(false);
+			expect(usePluginStore.getState().isSearchCancelled).toBe(false);
+		});
+
+		test('still clears when stopping the search fails', async () => {
+			const usePluginStore = await resetStore();
+			mockCallPlugin.mockRejectedValue(new Error('RPC call timed out'));
+			usePluginStore.setState({ isSearching: true, activeSearchId: 's1', searchQuery: 'x' });
+
+			await expect(usePluginStore.getState().resetSearch()).resolves.toBeUndefined();
+
+			expect(usePluginStore.getState().searchQuery).toBe('');
+			expect(usePluginStore.getState().isSearching).toBe(false);
+		});
+	});
 });

@@ -21,6 +21,7 @@ export interface PluginActions {
 	startSearch(variable: Variable, scope?: SearchScope): Promise<void>;
 	cancelSearch(): Promise<void>;
 	clearSearchResults(): void;
+	resetSearch(): Promise<void>;
 	clearRecentSearches(): void;
 	clearCache(variableId?: string): Promise<void>;
 	navigateToResult(usage: VariableUsage): Promise<void>;

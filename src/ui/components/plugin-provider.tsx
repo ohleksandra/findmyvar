@@ -29,6 +29,7 @@ export function PluginProvider({ children }: { children: React.ReactNode }) {
 			startSearch: s.startSearch,
 			cancelSearch: s.cancelSearch,
 			clearSearchResults: s.clearSearchResults,
+			resetSearch: s.resetSearch,
 			clearRecentSearches: s.clearRecentSearches,
 			clearCache: s.clearCache,
 			navigateToResult: s.navigateToResult,
