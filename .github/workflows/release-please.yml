@@ -21,12 +21,19 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+      # Outputs go through env vars, not ${{ }} inside the script: the `pr` output is JSON with
+      # the changelog in it, and pasting that into bash breaks on any "(" (and runs PR text as code).
       - name: Log release result
+        env:
+          RELEASE_CREATED: ${{ steps.release.outputs.release_created }}
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
+          MAJOR: ${{ steps.release.outputs.major }}
+          RELEASE_PR: ${{ steps.release.outputs.pr }}
         run: |
-          echo "Release created: ${{ steps.release.outputs.release_created }}"
-          echo "Tag: ${{ steps.release.outputs.tag_name }}"
-          echo "Major version: ${{ steps.release.outputs.major }}"
-          echo "Release PR: ${{ steps.release.outputs.pr }}"
+          echo "Release created: $RELEASE_CREATED"
+          echo "Tag: $TAG_NAME"
+          echo "Major version: $MAJOR"
+          echo "Release PR: $(jq -r 'if . then "#\(.number) \(.title)" else "none" end' <<< "${RELEASE_PR:-null}")"
 
   trigger-assets:
     needs: release-please
