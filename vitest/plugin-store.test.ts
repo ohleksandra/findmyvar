@@ -42,6 +42,7 @@ describe('PluginStore', () => {
 			searchResults: [],
 			searchQuery: '',
 			isSearchCompleted: false,
+			isSearchCancelled: false,
 			scope: 'all-pages',
 			activeSearchId: null,
 		});
@@ -221,8 +222,64 @@ describe('PluginStore', () => {
 
 			usePluginStore.getState()._appendResults(searchId, [], true);
 
-			expect(usePluginStore.getState().isSearchCompleted).toBe(true);
+			expect(usePluginStore.getState().isSearchCompleted).toBe(false);
 			expect(usePluginStore.getState().recentSearches).toHaveLength(0);
+		});
+
+		test('marks the search as cancelled, not completed', async () => {
+			const usePluginStore = await resetStore();
+			usePluginStore.setState({ activeSearchId: 'search-1', isSearching: true });
+
+			mockCallPlugin.mockResolvedValue({ cancelled: true });
+
+			await usePluginStore.getState().cancelSearch();
+
+			expect(usePluginStore.getState().isSearchCancelled).toBe(true);
+			expect(usePluginStore.getState().isSearchCompleted).toBe(false);
+		});
+
+		test('a search that finishes while cancelling stays finished', async () => {
+			const usePluginStore = await resetStore();
+			usePluginStore.setState({ activeSearchId: 'search-1', isSearching: true });
+			let finishCancel!: (value: { cancelled: boolean }) => void;
+			mockCallPlugin.mockReturnValue(new Promise((resolve) => (finishCancel = resolve)));
+
+			const cancelling = usePluginStore.getState().cancelSearch();
+			usePluginStore.getState()._appendResults('search-1', [], true);
+			finishCancel({ cancelled: false });
+			await cancelling;
+
+			expect(usePluginStore.getState().isSearchCompleted).toBe(true);
+			expect(usePluginStore.getState().isSearchCancelled).toBe(false);
+		});
+
+		test('a failed cancel request is caught and still stops the search', async () => {
+			const usePluginStore = await resetStore();
+			usePluginStore.setState({ activeSearchId: 'search-1', isSearching: true });
+			mockCallPlugin.mockRejectedValue(new Error('RPC call timed out'));
+
+			await expect(usePluginStore.getState().cancelSearch()).resolves.toBeUndefined();
+
+			expect(usePluginStore.getState().isSearching).toBe(false);
+			expect(usePluginStore.getState().isSearchCancelled).toBe(true);
+			expect(usePluginStore.getState().activeSearchId).toBeNull();
+		});
+
+		test('a new search clears the cancelled and completed flags', async () => {
+			const usePluginStore = await resetStore();
+			usePluginStore.setState({ isSearchCancelled: true, isSearchCompleted: true });
+
+			mockCallPlugin.mockResolvedValue({ started: true });
+
+			await usePluginStore.getState().startSearch({
+				id: 'var-1',
+				name: 'Test Variable',
+				resolvedType: 'COLOR' as const,
+				hiddenFromPublishing: false,
+			});
+
+			expect(usePluginStore.getState().isSearchCancelled).toBe(false);
+			expect(usePluginStore.getState().isSearchCompleted).toBe(false);
 		});
 	});
 
@@ -245,6 +302,125 @@ describe('PluginStore', () => {
 				'variableSearch.start',
 				expect.anything(),
 			);
+		});
+	});
+
+	describe('resetSearch', () => {
+		test('goes back to the start screen instead of a "no results" state', async () => {
+			const usePluginStore = await resetStore();
+			usePluginStore.setState({
+				searchQuery: 'brand-bg',
+				searchVariable: {
+					id: 'v1',
+					name: 'brand-bg',
+					resolvedType: 'COLOR',
+					hiddenFromPublishing: false,
+				},
+				isSearchCompleted: true,
+				searchResults: [],
+				error: 'Something failed',
+			});
+
+			await usePluginStore.getState().resetSearch();
+
+			const state = usePluginStore.getState();
+			expect(state.searchQuery).toBe('');
+			expect(state.searchVariable).toBeNull();
+			expect(state.isSearchCompleted).toBe(false);
+			expect(state.error).toBeNull();
+		});
+
+		test('stops a running search first', async () => {
+			const usePluginStore = await resetStore();
+			mockCallPlugin.mockResolvedValue({ cancelled: true });
+			usePluginStore.setState({ isSearching: true, activeSearchId: 's1', searchQuery: 'x' });
+
+			await usePluginStore.getState().resetSearch();
+
+			expect(mockCallPlugin).toHaveBeenCalledWith('variableSearch.cancel');
+			expect(usePluginStore.getState().isSearching).toBe(false);
+			expect(usePluginStore.getState().isSearchCancelled).toBe(false);
+		});
+
+		test('still clears when stopping the search fails', async () => {
+			const usePluginStore = await resetStore();
+			mockCallPlugin.mockRejectedValue(new Error('RPC call timed out'));
+			usePluginStore.setState({ isSearching: true, activeSearchId: 's1', searchQuery: 'x' });
+
+			await expect(usePluginStore.getState().resetSearch()).resolves.toBeUndefined();
+
+			expect(usePluginStore.getState().searchQuery).toBe('');
+			expect(usePluginStore.getState().isSearching).toBe(false);
+		});
+	});
+
+	describe('getAllVariables', () => {
+		const variable = (id: string, name = id) => ({
+			id,
+			name,
+			resolvedType: 'COLOR' as const,
+			hiddenFromPublishing: false,
+		});
+
+		test('drops deleted variables from recent searches and picks up new names', async () => {
+			const usePluginStore = await resetStore();
+			usePluginStore.setState({
+				recentSearches: [variable('a'), variable('gone'), variable('b', 'old-name')],
+			});
+			mockCallPlugin.mockResolvedValue({
+				variables: [variable('a'), variable('b', 'new-name'), variable('c')],
+			});
+
+			await usePluginStore.getState().getAllVariables();
+
+			expect(usePluginStore.getState().recentSearches).toEqual([
+				variable('a'),
+				variable('b', 'new-name'),
+			]);
+		});
+
+		test('leaves the results of a deleted variable', async () => {
+			const usePluginStore = await resetStore();
+			usePluginStore.setState({
+				searchVariable: variable('gone'),
+				isSearchCompleted: true,
+				searchResults: [
+					{
+						nodeId: 'n1',
+						nodeName: 'Rect',
+						nodeType: 'RECTANGLE',
+						field: 'fills',
+						pageName: 'Page 1',
+						pageId: 'p1',
+						nodePath: 'Rect',
+					},
+				],
+				cached: true,
+			});
+			mockCallPlugin.mockResolvedValue({ variables: [variable('a')] });
+
+			await usePluginStore.getState().getAllVariables();
+
+			expect(usePluginStore.getState()).toMatchObject({
+				searchVariable: null,
+				searchResults: [],
+				isSearchCompleted: false,
+				cached: false,
+			});
+		});
+
+		test('keeps the searched variable while it exists', async () => {
+			const usePluginStore = await resetStore();
+			usePluginStore.setState({
+				searchVariable: variable('a', 'old'),
+				isSearchCompleted: true,
+			});
+			mockCallPlugin.mockResolvedValue({ variables: [variable('a', 'new')] });
+
+			await usePluginStore.getState().getAllVariables();
+
+			expect(usePluginStore.getState().searchVariable).toEqual(variable('a', 'new'));
+			expect(usePluginStore.getState().isSearchCompleted).toBe(true);
 		});
 	});
 });

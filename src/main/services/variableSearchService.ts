@@ -7,6 +7,7 @@ import { SearchCache } from './search-cache';
 import { findNodesWithBindingsAsync, yieldToMain } from './node-traverser';
 import { buildNodePath } from './node-path-builder';
 import { resolveSearchTargets } from './search-target-resolver';
+import { acquireTraversalMode } from './traversal-mode';
 
 const RESULTS_BATCH_SIZE = 50;
 const NODES_PER_PROGRESS = 500;
@@ -45,6 +46,8 @@ class VariableSearchService {
 	async search(variableId: string, scope: SearchScope, searchId: string): Promise<void> {
 		this.activeSearchId = searchId;
 		const startTime = Date.now();
+		// A change that lands while this search runs must make its cache entry out of date.
+		const changeCountAtStart = this.cache.getDocumentChangeCount();
 
 		const cacheKey = this.cache.keyFor(variableId, scope);
 		const cached = this.cache.get(cacheKey);
@@ -55,6 +58,8 @@ class VariableSearchService {
 			);
 
 			await this.streamCachedResults(searchId, cached.results);
+			// A newer search, or Cancel, may have taken over while the results streamed.
+			if (!this.isActiveSearch(searchId)) return;
 
 			this.notifier.notify('variableSearch.progress', {
 				searchId,
@@ -88,11 +93,9 @@ class VariableSearchService {
 		}
 
 		const signal = { cancelled: false };
-		const previousSkipInvisible = figma.skipInvisibleInstanceChildren;
+		const releaseTraversalMode = acquireTraversalMode('fast');
 
 		try {
-			figma.skipInvisibleInstanceChildren = true;
-
 			const allResults: VariableUsage[] = [];
 			const targets = await resolveSearchTargets(scope);
 
@@ -205,7 +208,7 @@ class VariableSearchService {
 				scope,
 				results: allResults,
 				timestamp: Date.now(),
-				documentChangeCount: this.cache.getDocumentChangeCount(),
+				documentChangeCount: changeCountAtStart,
 				selectionKey: scope === SCOPE_SELECTION ? this.cache.getSelectionKey() : undefined,
 			});
 
@@ -216,7 +219,7 @@ class VariableSearchService {
 			const message = error instanceof Error ? error.message : 'Unknown error';
 			this.notifier.notify('variableSearch.error', { searchId, error: message });
 		} finally {
-			figma.skipInvisibleInstanceChildren = previousSkipInvisible;
+			releaseTraversalMode();
 			if (this.activeSearchId === searchId) {
 				this.activeSearchId = null;
 			}
@@ -229,6 +232,7 @@ class VariableSearchService {
 
 	private async streamCachedResults(searchId: string, results: VariableUsage[]): Promise<void> {
 		for (let i = 0; i < results.length; i += RESULTS_BATCH_SIZE) {
+			if (!this.isActiveSearch(searchId)) return;
 			const batch = results.slice(i, i + RESULTS_BATCH_SIZE);
 			const isLast = i + RESULTS_BATCH_SIZE >= results.length;
 

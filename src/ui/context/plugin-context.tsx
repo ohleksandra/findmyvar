@@ -9,6 +9,7 @@ export interface PluginState {
 	searchVariable: Variable | null;
 	isSearching: boolean;
 	isSearchCompleted: boolean;
+	isSearchCancelled: boolean;
 	progress: SearchProgress | null;
 	error: string | null;
 	cached: boolean;
@@ -20,6 +21,7 @@ export interface PluginActions {
 	startSearch(variable: Variable, scope?: SearchScope): Promise<void>;
 	cancelSearch(): Promise<void>;
 	clearSearchResults(): void;
+	resetSearch(): Promise<void>;
 	clearRecentSearches(): void;
 	clearCache(variableId?: string): Promise<void>;
 	navigateToResult(usage: VariableUsage): Promise<void>;

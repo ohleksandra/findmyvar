@@ -1,13 +1,14 @@
 import { usePlugin } from '@/context/plugin-context';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
 import { useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { VariableUsage as VariableUsageType } from '../../shared/rpc-types';
 import SearchResultSummary from './search-result-summary';
 import VariableUsage from './variable-usage';
 
-const ESTIMATED_ROW_HEIGHT = 42;
+const ESTIMATED_ROW_HEIGHT = 40;
 
 const VirtualizedResultList = ({ results }: { results: VariableUsageType[] }) => {
 	const parentRef = useRef<HTMLDivElement>(null);
@@ -52,8 +53,8 @@ const VirtualizedResultList = ({ results }: { results: VariableUsageType[] }) =>
 };
 
 const SearchResult = () => {
-	const { state } = usePlugin();
-	const { searchResults, searchVariable, isSearchCompleted } = state;
+	const { state, actions } = usePlugin();
+	const { searchResults, searchVariable, isSearchCompleted, isSearchCancelled } = state;
 
 	const pagesCount = useMemo(() => {
 		const uniquePages = new Set(searchResults.map((result) => result.pageName));
@@ -62,13 +63,23 @@ const SearchResult = () => {
 
 	return (
 		<div className="flex flex-col relative">
-			{isSearchCompleted && (
-				<div className="flex px-6 py-3 border-b sticky top-0 bg-white z-20">
+			{(isSearchCompleted || isSearchCancelled) && (
+				<div className="flex px-4 h-10 items-center gap-x-2 border-b sticky top-0 bg-background z-20">
 					<SearchResultSummary
 						variable={searchVariable!}
 						resultCount={searchResults.length}
 						pagesCount={pagesCount}
+						isPartial={isSearchCancelled}
 					/>
+					{isSearchCancelled && (
+						<Button
+							variant="secondary"
+							className="ml-auto"
+							onClick={() => void actions.startSearch(searchVariable!)}
+						>
+							Search again
+						</Button>
+					)}
 				</div>
 			)}
 			<Accordion type="multiple" className="w-full" aria-label="Search results by page">
@@ -80,10 +91,10 @@ const SearchResult = () => {
 					}, {}),
 				).map(([pageName, results]) => (
 					<AccordionItem key={pageName} value={pageName}>
-						<AccordionTrigger className="font-sans font-semibold text-sm px-6">
-							{pageName}
+						<AccordionTrigger className="pl-2 pr-4">
+							<span className="truncate">{pageName}</span>
 
-							<Badge className="ml-auto rounded-sm px-1.5 py-0.5" variant="secondary">
+							<Badge className="ml-auto" variant="secondary">
 								{results.length}
 							</Badge>
 						</AccordionTrigger>

@@ -12,16 +12,14 @@ const RecentSearchList = (props: Props) => {
 
 	return (
 		<div className={cn('flex flex-col gap-y-2', props.className)}>
-			<p className="text-xs not-first:font-medium text-[#656B75] font-sans">
-				Recent searches:
-			</p>
-			<ul className="flex gap-x-1 gap-y-1.5 flex-wrap">
+			<p className="text-muted-foreground">Recent</p>
+			<ul className="flex gap-1 flex-wrap">
 				{recentSearches.map((variable) => (
 					<li key={variable.id}>
 						<Badge
 							asChild
 							variant={'secondary'}
-							className="cursor-pointer flex items-center gap-1 bg-[#E5E6E8] rounded-md font-mono"
+							className="h-6 max-w-full gap-0 pr-2 pl-0 hover:bg-tertiary"
 						>
 							<button
 								type="button"
@@ -32,11 +30,11 @@ const RecentSearchList = (props: Props) => {
 								}}
 							>
 								<VariableTypeIcon
-									className="size-4!"
+									className="size-6! text-icon-secondary"
 									type={variable.resolvedType}
 									aria-hidden="true"
 								/>
-								<span className="text-xs">{variable.name}</span>
+								<span className="truncate">{variable.name}</span>
 							</button>
 						</Badge>
 					</li>

@@ -1,34 +1,134 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import '@fontsource-variable/inter/wght.css';
 
-@font-face {
-	font-family: 'Geist Mono';
-	font-style: normal;
-	font-weight: 100 900;
-	font-display: swap;
-	src: url('/src/ui/assets/GeistMono-VariableFont_wght.ttf') format('truetype');
+/* Figma adds `figma-dark` to <html> when the editor is in dark mode (themeColors: true). */
+@custom-variant dark (&:is(.figma-dark *));
+
+/*
+ * UI3 tokens, taken from Figma's "UI3: Figma's UI Kit" (Community file 1486123838948777078).
+ * Inside Figma the live --figma-color-* values are injected into the plugin iframe and follow
+ * the user's light/dark theme; the fallbacks only apply in the browser dev preview.
+ */
+:root {
+	--ui3-bg: var(--figma-color-bg, #ffffff);
+	--ui3-bg-secondary: var(--figma-color-bg-secondary, #f5f5f5);
+	--ui3-bg-tertiary: var(--figma-color-bg-tertiary, #e6e6e6);
+	--ui3-bg-hover: var(--figma-color-bg-hover, #f5f5f5);
+	--ui3-bg-selected: var(--figma-color-bg-selected, #e5f4ff);
+	--ui3-bg-brand: var(--figma-color-bg-brand, #0d99ff);
+	--ui3-bg-brand-hover: var(--figma-color-bg-brand-hover, #007be5);
+	--ui3-bg-danger: var(--figma-color-bg-danger, #f24822);
+	--ui3-bg-danger-hover: var(--figma-color-bg-danger-hover, #dc3412);
+	--ui3-bg-disabled: var(--figma-color-bg-disabled, #d9d9d9);
+	--ui3-bg-warning-tertiary: var(--figma-color-bg-warning-tertiary, #fff1c2);
+	--ui3-text: var(--figma-color-text, rgb(0 0 0 / 0.9));
+	--ui3-text-secondary: var(--figma-color-text-secondary, rgb(0 0 0 / 0.5));
+	--ui3-text-tertiary: var(--figma-color-text-tertiary, rgb(0 0 0 / 0.3));
+	--ui3-text-brand: var(--figma-color-text-brand, #007be5);
+	--ui3-text-danger: var(--figma-color-text-danger, #dc3412);
+	--ui3-text-onbrand: var(--figma-color-text-onbrand, #ffffff);
+	--ui3-text-warning: var(--figma-color-text-warning, #b86200);
+	--ui3-icon-success: var(--figma-color-icon-success, #14ae5c);
+	--ui3-icon: var(--figma-color-icon, rgb(0 0 0 / 0.9));
+	--ui3-icon-secondary: var(--figma-color-icon-secondary, rgb(0 0 0 / 0.5));
+	--ui3-icon-tertiary: var(--figma-color-icon-tertiary, rgb(0 0 0 / 0.3));
+	--ui3-border: var(--figma-color-border, #e6e6e6);
+	--ui3-border-selected: var(--figma-color-border-selected, #0d99ff);
+	--ui3-border-selected-strong: var(--figma-color-border-selected-strong, #007be5);
+
+	/* Not exposed to plugins, so these come straight from the kit. Menus and tooltips are dark in both themes. */
+	--ui3-border-translucent: rgb(0 0 0 / 0.1);
+	--ui3-bg-hover-translucent: rgb(0 0 0 / 0.05);
+	--ui3-text-highlight: rgb(13 153 255 / 0.4);
+	--ui3-bg-menu: #1e1e1e;
+	--ui3-bg-menu-selected: #0d99ff;
+	--ui3-border-menu: #383838;
+	--ui3-text-menu: #ffffff;
+	--ui3-text-menu-secondary: rgb(255 255 255 / 0.7);
+
+	/* shadcn/ui tokens, mapped onto UI3 so the existing primitives pick them up. */
+	--background: var(--ui3-bg);
+	--foreground: var(--ui3-text);
+	--card: var(--ui3-bg);
+	--card-foreground: var(--ui3-text);
+	--popover: var(--ui3-bg);
+	--popover-foreground: var(--ui3-text);
+	--primary: var(--ui3-bg-brand);
+	--primary-foreground: var(--ui3-text-onbrand);
+	--secondary: var(--ui3-bg-secondary);
+	--secondary-foreground: var(--ui3-text);
+	--muted: var(--ui3-bg-secondary);
+	--muted-foreground: var(--ui3-text-secondary);
+	--accent: var(--ui3-bg-hover);
+	--accent-foreground: var(--ui3-text);
+	--destructive: var(--ui3-bg-danger);
+	--border: var(--ui3-border);
+	--input: var(--ui3-border-translucent);
+	--ring: var(--ui3-border-selected);
+	--chart-1: oklch(0.646 0.222 41.116);
+	--chart-2: oklch(0.6 0.118 184.704);
+	--chart-3: oklch(0.398 0.07 227.392);
+	--chart-4: oklch(0.828 0.189 84.429);
+	--chart-5: oklch(0.769 0.188 70.08);
+	--sidebar: var(--ui3-bg);
+	--sidebar-foreground: var(--ui3-text);
+	--sidebar-primary: var(--ui3-bg-brand);
+	--sidebar-primary-foreground: var(--ui3-text-onbrand);
+	--sidebar-accent: var(--ui3-bg-hover);
+	--sidebar-accent-foreground: var(--ui3-text);
+	--sidebar-border: var(--ui3-border);
+	--sidebar-ring: var(--ui3-border-selected);
 }
 
-@font-face {
-	font-family: 'Geist';
-	font-style: normal;
-	font-weight: 100 900;
-	font-display: swap;
-	src: url('/src/ui/assets/Geist-VariableFont_wght.ttf') format('truetype');
+.figma-dark {
+	--ui3-border-translucent: rgb(255 255 255 / 0.1);
+	--ui3-bg-hover-translucent: rgb(255 255 255 / 0.05);
 }
-
-@custom-variant dark (&:is(.dark *));
 
 @theme {
-	--font-sans: 'Geist', sans-serif;
-	--font-mono: 'Geist Mono', monospace;
+	--font-sans: 'Inter Variable', Inter, system-ui, sans-serif;
+
+	/* UI3 type tokens: body/body.small, body/body.medium, body/body.large and the headings. */
+	--text-body-small: 9px;
+	--text-body-small--line-height: 14px;
+	--text-body-small--letter-spacing: 0.005em;
+	--text-body-medium: 11px;
+	--text-body-medium--line-height: 16px;
+	--text-body-medium--letter-spacing: 0.005em;
+	--text-body-large: 13px;
+	--text-body-large--line-height: 22px;
+	--text-body-large--letter-spacing: -0.0025em;
+	--text-heading-small: 13px;
+	--text-heading-small--line-height: 22px;
+	--text-heading-small--letter-spacing: -0.0025em;
+	--text-heading-medium: 15px;
+	--text-heading-medium--line-height: 25px;
+	--text-heading-medium--letter-spacing: -0.005em;
+	--text-heading-large: 24px;
+	--text-heading-large--line-height: 32px;
+	--text-heading-large--letter-spacing: -0.017em;
+
+	--font-weight-default: 450;
+	--font-weight-strong: 550;
+
+	/* elevation-500-modal-window, elevation-400-menu-panel and elevation-300-tooltip */
+	--shadow-menu:
+		0 2px 5px 0 rgb(0 0 0 / 0.15), 0 10px 16px 0 rgb(0 0 0 / 0.12),
+		0 0 0.5px 0 rgb(0 0 0 / 0.12);
+	--shadow-modal:
+		0 2px 5px 0 rgb(0 0 0 / 0.15), 0 10px 24px 0 rgb(0 0 0 / 0.18),
+		0 0 0.5px 0 rgb(0 0 0 / 0.08), 0 3px 12px 0 rgb(0 0 0 / 0.05);
+	--shadow-tooltip:
+		0 1px 3px 0 rgb(0 0 0 / 0.1), 0 5px 12px 0 rgb(0 0 0 / 0.13), 0 0 0.5px 0 rgb(0 0 0 / 0.15);
 }
 
 @theme inline {
-	--radius-sm: calc(var(--radius) - 4px);
-	--radius-md: calc(var(--radius) - 2px);
-	--radius-lg: var(--radius);
-	--radius-xl: calc(var(--radius) + 4px);
+	/* radius-medium (5px) is used on nearly every control; radius-large (13px) on menus. */
+	--radius-sm: 3px;
+	--radius-md: 5px;
+	--radius-lg: 5px;
+	--radius-xl: 13px;
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
@@ -60,96 +160,88 @@
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-ring: var(--sidebar-ring);
-}
 
-:root {
-	--radius: 0.625rem;
-	--background: oklch(1 0 0);
-	--foreground: oklch(0.145 0 0);
-	--card: oklch(1 0 0);
-	--card-foreground: oklch(0.145 0 0);
-	--popover: oklch(1 0 0);
-	--popover-foreground: oklch(0.145 0 0);
-	--primary: oklch(0.205 0 0);
-	--primary-foreground: oklch(0.985 0 0);
-	--secondary: oklch(0.97 0 0);
-	--secondary-foreground: oklch(0.205 0 0);
-	--muted: oklch(0.97 0 0);
-	--muted-foreground: oklch(0.556 0 0);
-	--accent: oklch(0.97 0 0);
-	--accent-foreground: oklch(0.205 0 0);
-	--destructive: oklch(0.577 0.245 27.325);
-	--border: oklab(92.474% -0.00027 -0.003);
-	--input: oklch(0.922 0 0);
-	--ring: oklch(0.708 0 0);
-	--chart-1: oklch(0.646 0.222 41.116);
-	--chart-2: oklch(0.6 0.118 184.704);
-	--chart-3: oklch(0.398 0.07 227.392);
-	--chart-4: oklch(0.828 0.189 84.429);
-	--chart-5: oklch(0.769 0.188 70.08);
-	--sidebar: oklch(0.985 0 0);
-	--sidebar-foreground: oklch(0.145 0 0);
-	--sidebar-primary: oklch(0.205 0 0);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.97 0 0);
-	--sidebar-accent-foreground: oklch(0.205 0 0);
-	--sidebar-border: oklch(0.922 0 0);
-	--sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-	--background: oklch(0.145 0 0);
-	--foreground: oklch(0.985 0 0);
-	--card: oklch(0.205 0 0);
-	--card-foreground: oklch(0.985 0 0);
-	--popover: oklch(0.205 0 0);
-	--popover-foreground: oklch(0.985 0 0);
-	--primary: oklch(0.922 0 0);
-	--primary-foreground: oklch(0.205 0 0);
-	--secondary: oklch(0.269 0 0);
-	--secondary-foreground: oklch(0.985 0 0);
-	--muted: oklch(0.269 0 0);
-	--muted-foreground: oklch(0.708 0 0);
-	--accent: oklch(0.269 0 0);
-	--accent-foreground: oklch(0.985 0 0);
-	--destructive: oklch(0.704 0.191 22.216);
-	--border: oklch(1 0 0 / 10%);
-	--input: oklch(1 0 0 / 15%);
-	--ring: oklch(0.556 0 0);
-	--chart-1: oklch(0.488 0.243 264.376);
-	--chart-2: oklch(0.696 0.17 162.48);
-	--chart-3: oklch(0.769 0.188 70.08);
-	--chart-4: oklch(0.627 0.265 303.9);
-	--chart-5: oklch(0.645 0.246 16.439);
-	--sidebar: oklch(0.205 0 0);
-	--sidebar-foreground: oklch(0.985 0 0);
-	--sidebar-primary: oklch(0.488 0.243 264.376);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.269 0 0);
-	--sidebar-accent-foreground: oklch(0.985 0 0);
-	--sidebar-border: oklch(1 0 0 / 10%);
-	--sidebar-ring: oklch(0.556 0 0);
+	/* UI3 roles that shadcn has no name for. */
+	--color-subtle: var(--ui3-text-tertiary);
+	--color-hover: var(--ui3-bg-hover);
+	--color-hover-translucent: var(--ui3-bg-hover-translucent);
+	--color-selected: var(--ui3-bg-selected);
+	--color-tertiary: var(--ui3-bg-tertiary);
+	--color-brand-hover: var(--ui3-bg-brand-hover);
+	--color-brand-text: var(--ui3-text-brand);
+	--color-danger-hover: var(--ui3-bg-danger-hover);
+	--color-danger-text: var(--ui3-text-danger);
+	--color-disabled: var(--ui3-bg-disabled);
+	--color-success: var(--ui3-icon-success);
+	--color-warning-subtle: var(--ui3-bg-warning-tertiary);
+	--color-warning-text: var(--ui3-text-warning);
+	--color-icon: var(--ui3-icon);
+	--color-icon-secondary: var(--ui3-icon-secondary);
+	--color-icon-tertiary: var(--ui3-icon-tertiary);
+	--color-border-translucent: var(--ui3-border-translucent);
+	--color-border-selected: var(--ui3-border-selected);
+	--color-border-selected-strong: var(--ui3-border-selected-strong);
+	--color-menu: var(--ui3-bg-menu);
+	--color-menu-foreground: var(--ui3-text-menu);
+	--color-menu-muted-foreground: var(--ui3-text-menu-secondary);
+	--color-menu-selected: var(--ui3-bg-menu-selected);
+	--color-menu-border: var(--ui3-border-menu);
 }
 
 @layer base {
 	* {
-		@apply border-border outline-ring/50;
+		@apply border-border outline-ring;
+		scrollbar-width: thin;
+		scrollbar-color: var(--ui3-bg-tertiary) transparent;
 	}
 	body {
-		@apply bg-background text-foreground;
+		@apply bg-background text-foreground font-sans text-body-medium font-default antialiased;
 	}
-}
-
-.search-suggestions-shadow {
-	box-shadow:
-		0 1px 3px 0 #0000001a,
-		0 1px 2px -1px #0000001a;
-}
-
-.search-input-shadow {
-	box-shadow: 0 1px 2px 0 #0000000d;
+	/* Figma keeps the arrow cursor on controls. */
+	button,
+	[role='button'],
+	[role='tab'],
+	[role='option'] {
+		cursor: default;
+	}
+	::selection {
+		background: var(--ui3-text-highlight);
+	}
 }
 
 .AccordionTrigger[data-state='open'] > .AccordionChevron {
-	transform: rotate(-90deg);
+	transform: rotate(90deg);
+}
+
+/* Tree lines connecting unused variables to the variable they point to */
+.unused-tree-child {
+	position: relative;
+	padding-left: 16px;
+}
+
+/* The vertical line runs past every child except the last, where the elbow below ends it. */
+.unused-tree-child::before {
+	content: '';
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	border-left: 1px solid var(--ui3-border);
+}
+
+.unused-tree-child:last-child::before {
+	display: none;
+}
+
+/* Curves from the line into the child's checkbox, centred on the row whatever its height. */
+.unused-tree-elbow {
+	position: absolute;
+	left: -16px;
+	top: 0;
+	width: 18px;
+	height: 50%;
+	border-left: 1px solid var(--ui3-border);
+	border-bottom: 1px solid var(--ui3-border);
+	border-bottom-left-radius: 6px;
+	pointer-events: none;
 }

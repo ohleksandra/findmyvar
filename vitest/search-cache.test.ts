@@ -73,7 +73,7 @@ describe('SearchCache', () => {
 			expect(cache.get(key2)).toBeUndefined();
 		});
 
-		test('clear(variableId) attempts to delete by key (known limitation)', () => {
+		test('clear(variableId) removes only the entries for that variable', () => {
 			const key1 = cache.keyFor('v1', 'all-pages');
 			const key2 = cache.keyFor('v2', 'all-pages');
 			cache.set(key1, {
@@ -93,7 +93,7 @@ describe('SearchCache', () => {
 
 			cache.clear('v1');
 
-			expect(cache.get(key1)).toBeDefined();
+			expect(cache.get(key1)).toBeUndefined();
 			expect(cache.get(key2)).toBeDefined();
 		});
 	});
@@ -318,22 +318,7 @@ describe('SearchCache', () => {
 			expect(cache.getDocumentChangeCount()).toBe(1);
 		});
 
-		test('irrelevant change does not increment count', () => {
-			cache.startTracking();
-			const mockFigma = figma as unknown as { on: ReturnType<typeof vi.fn> };
-			const handler = mockFigma.on.mock.calls[0][1];
-
-			handler({
-				documentChanges: [
-					{ type: 'PROPERTY_CHANGE', id: 'x', node: {}, properties: ['name'] },
-				],
-			});
-
-			vi.advanceTimersByTime(500);
-			expect(cache.getDocumentChangeCount()).toBe(0);
-		});
-
-		test('PROPERTY_CHANGE on boundVariables is relevant', () => {
+		test('moving a layer does not increment count', () => {
 			cache.startTracking();
 			const mockFigma = figma as unknown as { on: ReturnType<typeof vi.fn> };
 			const handler = mockFigma.on.mock.calls[0][1];
@@ -344,14 +329,34 @@ describe('SearchCache', () => {
 						type: 'PROPERTY_CHANGE',
 						id: 'x',
 						node: {},
-						properties: ['boundVariables'],
+						properties: ['x', 'y', 'relativeTransform'],
 					},
 				],
 			});
 
 			vi.advanceTimersByTime(500);
-			expect(cache.getDocumentChangeCount()).toBe(1);
+			expect(cache.getDocumentChangeCount()).toBe(0);
 		});
+
+		// Figma reports a binding as the bound property; renaming or moving changes a result's name,
+		// path or page.
+		test.each(['fills', 'width', 'componentProperties', 'name', 'parent'])(
+			'PROPERTY_CHANGE on %s is relevant',
+			(property) => {
+				cache.startTracking();
+				const mockFigma = figma as unknown as { on: ReturnType<typeof vi.fn> };
+				const handler = mockFigma.on.mock.calls[0][1];
+
+				handler({
+					documentChanges: [
+						{ type: 'PROPERTY_CHANGE', id: 'x', node: {}, properties: [property] },
+					],
+				});
+
+				vi.advanceTimersByTime(500);
+				expect(cache.getDocumentChangeCount()).toBe(1);
+			},
+		);
 
 		test('multiple rapid changes debounce to a single count increment', () => {
 			cache.startTracking();

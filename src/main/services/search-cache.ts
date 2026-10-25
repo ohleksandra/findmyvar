@@ -5,6 +5,18 @@ const CACHE_TTL = 5 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 20;
 const DOCUMENT_CHANGE_DEBOUNCE_MS = 500;
 
+// Changes that can't affect results: they hold no variable and don't change a layer's name, path or
+// page. Binding a variable shows up as the bound property instead (e.g. `fills`, `width`).
+const RESULT_NEUTRAL_PROPERTIES = new Set<string>([
+	'x',
+	'y',
+	'relativeTransform',
+	'rotation',
+	'locked',
+	'expanded',
+	'pluginData',
+]);
+
 interface CacheEntry {
 	variableId: string;
 	timestamp: number;
@@ -50,14 +62,12 @@ class SearchCache {
 	}
 
 	clear(variableId?: string): void {
-		if (this.pendingChangeTimer !== null) {
-			clearTimeout(this.pendingChangeTimer);
-			this.pendingChangeTimer = null;
-			this.pendingChangeHasRelevant = false;
-		}
-
+		// A pending document change stays pending: a search already running must still see it.
 		if (variableId) {
-			this.cache.delete(variableId);
+			// Keys are `id:scope`, plus the page or selection.
+			for (const key of Array.from(this.cache.keys())) {
+				if (key.startsWith(`${variableId}:`)) this.cache.delete(key);
+			}
 		} else {
 			this.cache.clear();
 		}
@@ -66,6 +76,8 @@ class SearchCache {
 	isValid(entry: CacheEntry): boolean {
 		if (Date.now() - entry.timestamp > CACHE_TTL) return false;
 		if (entry.documentChangeCount !== this.documentChangeCount) return false;
+		// A change within the debounce window isn't counted yet, but the entry is already old.
+		if (this.pendingChangeHasRelevant) return false;
 
 		if (entry.scope === SCOPE_SELECTION) {
 			return entry.selectionKey === this.getSelectionKey();
@@ -107,7 +119,7 @@ class SearchCache {
 				change.type === 'CREATE' ||
 				change.type === 'DELETE' ||
 				(change.type === 'PROPERTY_CHANGE' &&
-					(change.properties as string[]).includes('boundVariables'))
+					change.properties.some((property) => !RESULT_NEUTRAL_PROPERTIES.has(property)))
 			);
 		});
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { usePluginStore } from '@/store/plugin-store';
+import { useUnusedStore } from '@/store/unused-store';
 import { useShallow } from 'zustand/react/shallow';
 import { rpcClient } from '@/lib/call-plugin';
 import { PluginContext, type PluginContextValue } from '@/context/plugin-context';
@@ -14,6 +15,7 @@ export function PluginProvider({ children }: { children: React.ReactNode }) {
 			searchVariable: s.searchVariable,
 			isSearching: s.isSearching,
 			isSearchCompleted: s.isSearchCompleted,
+			isSearchCancelled: s.isSearchCancelled,
 			progress: s.progress,
 			error: s.error,
 			cached: s.cached,
@@ -27,6 +29,7 @@ export function PluginProvider({ children }: { children: React.ReactNode }) {
 			startSearch: s.startSearch,
 			cancelSearch: s.cancelSearch,
 			clearSearchResults: s.clearSearchResults,
+			resetSearch: s.resetSearch,
 			clearRecentSearches: s.clearRecentSearches,
 			clearCache: s.clearCache,
 			navigateToResult: s.navigateToResult,
@@ -47,10 +50,26 @@ export function PluginProvider({ children }: { children: React.ReactNode }) {
 		const unsubError = rpcClient.on('variableSearch.error', (p) => {
 			usePluginStore.getState()._setError(p.searchId, p.error);
 		});
+		const unsubUnusedProgress = rpcClient.on('unusedScan.progress', (p) => {
+			useUnusedStore.getState()._setProgress(p.scanId, p);
+		});
+		const unsubUnusedComplete = rpcClient.on('unusedScan.complete', (p) => {
+			useUnusedStore.getState()._complete(p.scanId, p.result);
+		});
+		const unsubUnusedError = rpcClient.on('unusedScan.error', (p) => {
+			useUnusedStore.getState()._setError(p.scanId, p.error);
+		});
+		const unsubUnusedStale = rpcClient.on('unusedScan.stale', () => {
+			useUnusedStore.getState()._setStale();
+		});
 		return () => {
 			unsubResults();
 			unsubProgress();
 			unsubError();
+			unsubUnusedProgress();
+			unsubUnusedComplete();
+			unsubUnusedError();
+			unsubUnusedStale();
 		};
 	}, []);
 

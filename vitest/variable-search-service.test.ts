@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { VariableUsage } from '../src/shared/rpc-types';
 import { VariableSearchService } from '../src/main/services/variableSearchService';
+import { resetTraversalMode } from '../src/main/services/traversal-mode';
 
 const mockNotify = vi.fn();
 
@@ -64,6 +65,7 @@ describe('VariableSearchService', () => {
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
+		resetTraversalMode();
 		vi.useFakeTimers();
 
 		const mockRpcServer = {
@@ -437,6 +439,110 @@ describe('VariableSearchService', () => {
 			const uniquePaths = new Set(paths);
 			expect(uniquePaths.size).toBe(1);
 			expect(paths[0]).toBe('Grandparent/.../Parent');
+		});
+	});
+
+	describe('races with the cache', () => {
+		const ALIAS = (id: string) => ({ type: 'VARIABLE_ALIAS', id });
+		let emitChange: (event: unknown) => void;
+
+		function setupPage(children: SceneNode[]) {
+			const listeners: ((event: unknown) => void)[] = [];
+			const page = createMockPage('page-1', 'Page 1', children);
+			vi.stubGlobal('figma', {
+				currentPage: page,
+				root: { children: [page] },
+				skipInvisibleInstanceChildren: false,
+				loadAllPagesAsync: vi.fn(async () => {}),
+				on: vi.fn((_event: string, cb: (event: unknown) => void) => listeners.push(cb)),
+			});
+			emitChange = (event) => listeners.forEach((cb) => cb(event));
+			return page;
+		}
+
+		const boundTo = (id: string, variableId: string) =>
+			createMockNode(id, id, 'RECTANGLE', { boundVariables: { fills: [ALIAS(variableId)] } });
+
+		async function run(variableId: string, searchId: string) {
+			const search = variableSearchService.search(variableId, 'current-page', searchId);
+			await vi.runAllTimersAsync();
+			await search;
+		}
+
+		const resultCalls = (searchId: string) =>
+			mockNotify.mock.calls.filter(
+				(c) => c[0] === 'variableSearch.results' && c[1].searchId === searchId,
+			);
+		const isComplete = (searchId: string) => resultCalls(searchId).some((c) => c[1].isComplete);
+		const resultCount = (searchId: string) =>
+			resultCalls(searchId).reduce((sum, c) => sum + c[1].results.length, 0);
+		const fromCache = (searchId: string) => resultCalls(searchId).some((c) => c[1].fromCache);
+
+		test('a search answered from the cache does not stop a newer search', async () => {
+			const others = Array.from({ length: 300 }, (_, i) => boundTo(`o${i}`, 'v2'));
+			setupPage([...Array.from({ length: 60 }, (_, i) => boundTo(`n${i}`, 'v1')), ...others]);
+			await variableSearchService.init();
+			await run('v1', 'warm-up');
+
+			// v1 streams 60 cached results in two batches; v2 starts in between.
+			const cached = variableSearchService.search('v1', 'current-page', 'A');
+			const newer = variableSearchService.search('v2', 'current-page', 'B');
+			await vi.runAllTimersAsync();
+			await Promise.all([cached, newer]);
+
+			expect(isComplete('B')).toBe(true);
+			expect(resultCount('B')).toBe(300);
+			expect(isComplete('A')).toBe(false);
+		});
+
+		test('Cancel stops a search that streams cached results', async () => {
+			setupPage(Array.from({ length: 120 }, (_, i) => boundTo(`n${i}`, 'v1')));
+			await variableSearchService.init();
+			await run('v1', 'warm-up');
+
+			const cached = variableSearchService.search('v1', 'current-page', 'A');
+			variableSearchService.cancelSearch();
+			await vi.runAllTimersAsync();
+			await cached;
+
+			expect(isComplete('A')).toBe(false);
+		});
+
+		test('searching right after an edit does not use the cache', async () => {
+			const page = setupPage([boundTo('a', 'v1'), boundTo('b', 'v1')]);
+			await variableSearchService.init();
+			await run('v1', 'warm-up');
+
+			// Someone binds v1 to a third layer; the next search starts within the debounce window.
+			(page.children as SceneNode[]).push(boundTo('c', 'v1'));
+			emitChange({
+				documentChanges: [{ type: 'PROPERTY_CHANGE', node: {}, properties: ['fills'] }],
+			});
+			vi.advanceTimersByTime(100);
+			await run('v1', 'S1');
+
+			expect(fromCache('S1')).toBe(false);
+			expect(resultCount('S1')).toBe(3);
+		});
+
+		test('an edit made during a search makes its cache entry out of date', async () => {
+			// While the search reads layer `a`, someone edits the file and the debounce runs out.
+			const a = createMockNode('a', 'a', 'RECTANGLE');
+			Object.defineProperty(a, 'boundVariables', {
+				get: () => {
+					emitChange({ documentChanges: [{ type: 'CREATE', node: {} }] });
+					vi.advanceTimersByTime(600);
+					return { fills: [ALIAS('v1')] };
+				},
+			});
+			setupPage([a]);
+			await variableSearchService.init();
+			await run('v1', 'S1');
+
+			Object.defineProperty(a, 'boundVariables', { value: { fills: [ALIAS('v1')] } });
+			await run('v1', 'S2');
+
+			expect(fromCache('S2')).toBe(false);
 		});
 	});
 

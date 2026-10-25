@@ -36,6 +36,7 @@ interface PluginStore {
 	searchResults: VariableUsage[];
 	searchQuery: string;
 	isSearchCompleted: boolean;
+	isSearchCancelled: boolean;
 	scope: SearchScope;
 	activeSearchId: string | null;
 
@@ -44,6 +45,7 @@ interface PluginStore {
 	startSearch(variable: Variable, scope?: SearchScope): Promise<void>;
 	cancelSearch(): Promise<void>;
 	clearSearchResults(): void;
+	resetSearch(): Promise<void>;
 	clearCache(variableId?: string): Promise<void>;
 	navigateToResult(usage: VariableUsage): Promise<void>;
 	setSearchQuery(query: string): void;
@@ -73,14 +75,39 @@ export const usePluginStore = create<PluginStore>()(
 			searchResults: [],
 			searchQuery: '',
 			isSearchCompleted: false,
+			isSearchCancelled: false,
 			scope: DEFAULT_SCOPE,
 			activeSearchId: null,
 
 			async getAllVariables() {
 				try {
 					const { variables } = await callPlugin('get-variables');
+					const byId = new Map(variables.map((v) => [v.id, v]));
 
-					set({ variables });
+					set((prev) => {
+						// Deleted variables drop out, renamed ones get their new name.
+						const updated = {
+							variables,
+							recentSearches: prev.recentSearches.flatMap(
+								(v) => byId.get(v.id) ?? [],
+							),
+						};
+						const searched = prev.searchVariable;
+						if (!searched || prev.isSearching) return updated;
+
+						const fresh = byId.get(searched.id);
+						if (fresh) return { ...updated, searchVariable: fresh };
+						// The searched variable is gone, so its results point at nothing.
+						return {
+							...updated,
+							searchVariable: null,
+							searchResults: [],
+							isSearchCompleted: false,
+							isSearchCancelled: false,
+							progress: null,
+							cached: false,
+						};
+					});
 				} catch (err) {
 					set({
 						error: err instanceof Error ? err.message : 'Failed to fetch variables',
@@ -98,6 +125,8 @@ export const usePluginStore = create<PluginStore>()(
 
 				set({
 					isSearching: true,
+					isSearchCompleted: false,
+					isSearchCancelled: false,
 					searchVariable: variable,
 					scope: currentScope,
 					error: null,
@@ -124,11 +153,16 @@ export const usePluginStore = create<PluginStore>()(
 			},
 
 			cancelSearch: async () => {
+				const searchId = get().activeSearchId;
 				try {
 					await callPlugin('variableSearch.cancel');
-				} finally {
-					set({ isSearching: false, isSearchCompleted: true, activeSearchId: null });
+				} catch {
+					// Stop anyway: the UI stops listening to the search, so its results can't show up.
 				}
+				// The search may have finished while cancelling. Then it stays finished.
+				if (!searchId || get().activeSearchId !== searchId) return;
+				// Not completed: results so far are partial, so an empty list doesn't mean unused.
+				set({ isSearching: false, isSearchCancelled: true, activeSearchId: null });
 			},
 
 			clearSearchResults: () => {
@@ -136,6 +170,23 @@ export const usePluginStore = create<PluginStore>()(
 					searchResults: [],
 					error: null,
 					progress: null,
+				});
+			},
+
+			resetSearch: async () => {
+				if (get().isSearching) {
+					await get().cancelSearch();
+				}
+				// Back to the start screen: no query, no variable, no "no results" state.
+				set({
+					searchQuery: '',
+					searchVariable: null,
+					searchResults: [],
+					isSearchCompleted: false,
+					isSearchCancelled: false,
+					error: null,
+					progress: null,
+					cached: false,
 				});
 			},
 

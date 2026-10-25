@@ -1,9 +1,8 @@
 import * as React from 'react';
 import * as AccordionPrimitive from '@radix-ui/react-accordion';
-// import { ChevronDownIcon } from 'lucide-react';
-import { ChevronRightIcon } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { ChevronRightIcon } from '@/components/icons/ui3';
 
 function Accordion({ ...props }: React.ComponentProps<typeof AccordionPrimitive.Root>) {
 	return <AccordionPrimitive.Root data-slot="accordion" {...props} />;
@@ -22,6 +21,7 @@ function AccordionItem({
 	);
 }
 
+// Styled like a UI3 layers-panel row: 32px tall, chevron on the left, instant expand.
 function AccordionTrigger({
 	className,
 	children,
@@ -32,14 +32,13 @@ function AccordionTrigger({
 			<AccordionPrimitive.Trigger
 				data-slot="accordion-trigger"
 				className={cn(
-					'AccordionTrigger focus-visible:border-ring focus-visible:ring-ring/50 flex flex-1 items-start justify-between gap-4 rounded-md py-2.5 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50 [&[data-state=open]>svg]:rotate-180',
+					'AccordionTrigger flex h-8 flex-1 items-center gap-0 text-left text-body-medium font-strong outline-none hover:bg-hover focus-visible:outline-1 focus-visible:outline-border-selected focus-visible:-outline-offset-1 disabled:pointer-events-none disabled:text-subtle',
 					className,
 				)}
 				{...props}
 			>
-				<ChevronRightIcon className="AccordionChevron text-muted-foreground pointer-events-none size-4 shrink-0 translate-y-0.5 transition-transform duration-200" />
+				<ChevronRightIcon className="AccordionChevron text-icon-secondary pointer-events-none size-6 shrink-0" />
 				{children}
-				{/* <ChevronDownIcon className="text-muted-foreground pointer-events-none size-4 shrink-0 translate-y-0.5 transition-transform duration-200" /> */}
 			</AccordionPrimitive.Trigger>
 		</AccordionPrimitive.Header>
 	);
@@ -53,10 +52,10 @@ function AccordionContent({
 	return (
 		<AccordionPrimitive.Content
 			data-slot="accordion-content"
-			className="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down overflow-hidden text-sm"
+			className="overflow-hidden text-body-medium"
 			{...props}
 		>
-			<div className={cn('pt-0 pb-4', className)}>{children}</div>
+			<div className={cn('pb-2', className)}>{children}</div>
 		</AccordionPrimitive.Content>
 	);
 }

@@ -46,6 +46,7 @@ describe('rpc round-trip (diagnostic)', () => {
 						remote: false,
 					},
 				],
+				getLocalVariableCollectionsAsync: async () => [{ id: 'c1', name: 'Primitives' }],
 			},
 			ui: { postMessage: () => {}, on: () => {}, off: () => {} },
 		});
@@ -54,6 +55,7 @@ describe('rpc round-trip (diagnostic)', () => {
 		const server = createRpcServer<PluginProcedures, PluginNotifications>(main);
 		registerAllHandlers(server, {
 			variableSearchService: {} as never,
+			unusedVariableScanner: {} as never,
 		});
 		server.start();
 
@@ -63,6 +65,7 @@ describe('rpc round-trip (diagnostic)', () => {
 		const res = await client.call('get-variables');
 		expect(res.variables).toHaveLength(2);
 		expect(res.variables[1].resolvedType).toBe('EASING');
+		expect(res.variables[0].collectionName).toBe('Primitives');
 
 		client.stop();
 		server.stop();

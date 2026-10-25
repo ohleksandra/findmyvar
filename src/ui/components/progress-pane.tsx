@@ -15,27 +15,17 @@ const ProgressPane = () => {
 	}, [progress]);
 
 	return (
-		<div className="flex flex-col px-8 py-4 border-b border-b-[#E5E6E8] gap-y-4">
-			<div className="flex items-center">
-				<div className="bg-gray-50 border border-[#E5E6E8] rounded-lg p-1.5">
-					<Spinner className="size-6" />
-				</div>
-				<div className="flex flex-col pl-3">
-					<p className="font-sans text-sm font-medium">
-						Searching for{' '}
-						<span className="font-sans font-bold text-sm">'{searchQuery}'</span>
+		<div className="flex flex-col px-4 py-3 border-b gap-y-3">
+			<div className="flex items-center gap-x-1">
+				<Spinner className="-ml-1" />
+				<div className="flex flex-col min-w-0">
+					<p className="truncate">
+						Searching for <span className="font-strong">{searchQuery}</span>
 					</p>
-					<p className="font-sans text-xs text-[#656B75]">
-						Analyzing your document structure and variable usage...
-					</p>
+					<p className="text-muted-foreground">Checking layers that use this variable…</p>
 				</div>
-				<div className="ml-auto">
-					<Button
-						variant="outline"
-						size="sm"
-						className="ml-auto"
-						onClick={async () => await cancelSearch()}
-					>
+				<div className="ml-auto pl-2">
+					<Button variant="secondary" onClick={async () => await cancelSearch()}>
 						Cancel
 					</Button>
 				</div>

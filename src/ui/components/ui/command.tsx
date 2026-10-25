@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
-import { SearchIcon } from 'lucide-react';
+import { SearchSmallIcon } from '@/components/icons/ui3';
 
 import { cn } from '@/lib/utils';
 import {
@@ -59,23 +59,35 @@ function CommandDialog({
 
 function CommandInput({
 	className,
+	wrapperClassName,
+	startAdornment,
+	shortcut = 'Search ↵',
 	...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: React.ComponentProps<typeof CommandPrimitive.Input> & {
+	wrapperClassName?: string;
+	startAdornment?: React.ReactNode;
+	shortcut?: React.ReactNode;
+}) {
 	return (
+		// UI3 "Text input" (Large, icon lead): filled bg-secondary, blue border only on focus.
 		<div
 			data-slot="command-input-wrapper"
-			className="flex h-9 items-center gap-2 border-b px-3"
+			className={cn(
+				'flex h-8 items-center rounded-md border border-transparent bg-secondary pr-2 focus-within:border-border-selected',
+				wrapperClassName,
+			)}
 		>
-			<SearchIcon className="size-4 shrink-0 opacity-50" />
+			<SearchSmallIcon className="size-6 shrink-0 text-icon-secondary" />
+			{startAdornment}
 			<CommandPrimitive.Input
 				data-slot="command-input"
 				className={cn(
-					'placeholder:text-muted-foreground flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
+					'placeholder:text-subtle flex h-full w-full min-w-0 bg-transparent text-body-medium outline-hidden disabled:text-subtle',
 					className,
 				)}
 				{...props}
 			/>
-			<CommandShortcut className="text-nowrap">Search ↵</CommandShortcut>
+			{shortcut && <CommandShortcut className="text-nowrap">{shortcut}</CommandShortcut>}
 		</div>
 	);
 }
@@ -84,7 +96,11 @@ function CommandList({ className, ...props }: React.ComponentProps<typeof Comman
 	return (
 		<CommandPrimitive.List
 			data-slot="command-list"
-			className={cn('max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto', className)}
+			className={cn(
+				// Light UI3 panel that follows the theme, like Figma's variable and font pickers.
+				'bg-popover text-popover-foreground shadow-menu max-h-[300px] scroll-py-2 overflow-x-hidden overflow-y-auto rounded-xl py-2',
+				className,
+			)}
 			{...props}
 		/>
 	);
@@ -94,7 +110,7 @@ function CommandEmpty({ ...props }: React.ComponentProps<typeof CommandPrimitive
 	return (
 		<CommandPrimitive.Empty
 			data-slot="command-empty"
-			className="py-6 text-center text-sm"
+			className="text-muted-foreground px-4 py-1 text-body-medium"
 			{...props}
 		/>
 	);
@@ -108,7 +124,7 @@ function CommandGroup({
 		<CommandPrimitive.Group
 			data-slot="command-group"
 			className={cn(
-				'text-foreground [&_[cmdk-group-heading]]:text-muted-foreground overflow-hidden p-1 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium',
+				'[&_[cmdk-group-heading]]:text-muted-foreground overflow-hidden px-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1 [&_[cmdk-group-heading]]:text-body-medium',
 				className,
 			)}
 			{...props}
@@ -123,7 +139,7 @@ function CommandSeparator({
 	return (
 		<CommandPrimitive.Separator
 			data-slot="command-separator"
-			className={cn('bg-border -mx-1 h-px', className)}
+			className={cn('bg-border my-2 h-px', className)}
 			{...props}
 		/>
 	);
@@ -134,7 +150,8 @@ function CommandItem({ className, ...props }: React.ComponentProps<typeof Comman
 		<CommandPrimitive.Item
 			data-slot="command-item"
 			className={cn(
-				"data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+				// 24px rows inset 8px; the active row gets the pale selection blue Figma uses in pickers.
+				"data-[selected=true]:bg-selected [&_svg]:text-icon relative flex min-h-6 cursor-default items-center gap-1 rounded-md px-2 text-body-medium outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
 				className,
 			)}
 			{...props}
@@ -146,7 +163,7 @@ function CommandShortcut({ className, ...props }: React.ComponentProps<'span'>) 
 	return (
 		<span
 			data-slot="command-shortcut"
-			className={cn('text-muted-foreground ml-auto text-xs tracking-widest', className)}
+			className={cn('text-subtle ml-auto text-body-medium', className)}
 			{...props}
 		/>
 	);
